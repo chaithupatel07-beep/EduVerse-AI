@@ -116,3 +116,21 @@ async def student_headers(client: AsyncClient):
     )
     token = res.json()["data"]["tokens"]["access_token"]
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest_asyncio.fixture(scope="function")
+async def parent_headers(client: AsyncClient):
+    res = await client.post(
+        "/api/v1/auth/register-profile",
+        json={
+            "email": "conftest.parent@eduverse.io",
+            "password": "Password123!",
+            "full_name": "Conftest Parent",
+            "role": "parent",
+            "institution_code": "OGA-2026",
+            "preferred_language": "en",
+        },
+    )
+    token = res.json()["data"]["tokens"]["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+

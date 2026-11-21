@@ -33,6 +33,20 @@ from app.models.ai import (
     DocumentChunk,
     UserLanguagePreference,
 )
+from app.models.personalization import (
+    StudentLearningProfile,
+    TopicMasteryRecord,
+    KnowledgeGap,
+    StudyPlan,
+    StudyPlanActivity,
+    ResourceRecommendation,
+    RecommendationFeedback,
+    AdaptiveLearningSession,
+)
+from app.models.ml import (
+    MLModelMetadata,
+    AcademicPrediction,
+)
 
 __all__ = [
     "Base",
@@ -73,4 +87,14 @@ __all__ = [
     "AIMessage",
     "DocumentChunk",
     "UserLanguagePreference",
+    "StudentLearningProfile",
+    "TopicMasteryRecord",
+    "KnowledgeGap",
+    "StudyPlan",
+    "StudyPlanActivity",
+    "ResourceRecommendation",
+    "RecommendationFeedback",
+    "AdaptiveLearningSession",
+    "MLModelMetadata",
+    "AcademicPrediction",
 ]

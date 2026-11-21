@@ -602,3 +602,187 @@ CREATE TABLE IF NOT EXISTS communication_messages (
 
 CREATE INDEX IF NOT EXISTS idx_comm_msg_thread ON communication_messages(thread_id);
 
+-- ==============================================================================
+-- Phase 5: Advanced Personalized Learning, Knowledge-Gap Detection & Machine Learning
+-- ==============================================================================
+
+-- 35. Student Learning Profiles Table
+CREATE TABLE IF NOT EXISTS student_learning_profiles (
+    id VARCHAR(36) PRIMARY KEY,
+    student_id VARCHAR(36) NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    institution_id VARCHAR(36) NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+    overall_gpa DOUBLE PRECISION DEFAULT 0.0 NOT NULL,
+    quiz_average DOUBLE PRECISION DEFAULT 0.0 NOT NULL,
+    assignment_average DOUBLE PRECISION DEFAULT 0.0 NOT NULL,
+    attendance_rate DOUBLE PRECISION DEFAULT 0.0 NOT NULL,
+    quizzes_completed INTEGER DEFAULT 0 NOT NULL,
+    assignments_completed INTEGER DEFAULT 0 NOT NULL,
+    learning_streak_days INTEGER DEFAULT 1 NOT NULL,
+    learning_pace VARCHAR(50) DEFAULT 'moderate' NOT NULL, -- 'slow', 'moderate', 'fast', 'accelerated'
+    subject_performance_json JSONB DEFAULT '{}'::jsonb NOT NULL,
+    learning_goals_json JSONB DEFAULT '[]'::jsonb NOT NULL,
+    recommended_focus_areas JSONB DEFAULT '[]'::jsonb NOT NULL,
+    last_analyzed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_learning_profile_student ON student_learning_profiles(student_id);
+CREATE INDEX IF NOT EXISTS idx_learning_profile_inst ON student_learning_profiles(institution_id);
+
+-- 36. Topic Mastery Records Table
+CREATE TABLE IF NOT EXISTS topic_mastery_records (
+    id VARCHAR(36) PRIMARY KEY,
+    student_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    subject_id VARCHAR(36) NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
+    topic_name VARCHAR(200) NOT NULL,
+    mastery_level VARCHAR(50) DEFAULT 'beginner' NOT NULL, -- 'beginner', 'intermediate', 'advanced'
+    mastery_percentage DOUBLE PRECISION DEFAULT 0.0 NOT NULL,
+    total_questions_attempted INTEGER DEFAULT 0 NOT NULL,
+    total_correct_answers INTEGER DEFAULT 0 NOT NULL,
+    last_assessed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT uq_student_topic_mastery UNIQUE (student_id, subject_id, topic_name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_topic_mastery_lookup ON topic_mastery_records(student_id, subject_id);
+CREATE INDEX IF NOT EXISTS idx_topic_mastery_level ON topic_mastery_records(student_id, mastery_level);
+
+-- 37. Knowledge Gaps Table
+CREATE TABLE IF NOT EXISTS knowledge_gaps (
+    id VARCHAR(36) PRIMARY KEY,
+    student_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    subject_id VARCHAR(36) NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
+    topic_name VARCHAR(200) NOT NULL,
+    classification VARCHAR(50) DEFAULT 'needs_improvement' NOT NULL, -- 'strong_understanding', 'good_understanding', 'needs_improvement', 'requires_immediate_revision', 'insufficient_assessment_data'
+    confidence_score DOUBLE PRECISION DEFAULT 0.75 NOT NULL,
+    evidence_summary TEXT NOT NULL,
+    root_cause_reason TEXT,
+    suggested_action TEXT NOT NULL,
+    related_material_id VARCHAR(36) REFERENCES study_materials(id) ON DELETE SET NULL,
+    is_resolved BOOLEAN DEFAULT FALSE NOT NULL,
+    resolved_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_kg_student_unres ON knowledge_gaps(student_id, is_resolved);
+CREATE INDEX IF NOT EXISTS idx_kg_classification ON knowledge_gaps(classification);
+
+-- 38. Study Plans Table
+CREATE TABLE IF NOT EXISTS study_plans (
+    id VARCHAR(36) PRIMARY KEY,
+    student_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    institution_id VARCHAR(36) NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+    course_id VARCHAR(36) REFERENCES courses(id) ON DELETE SET NULL,
+    title VARCHAR(255) NOT NULL,
+    learning_objective TEXT NOT NULL,
+    target_start_date DATE NOT NULL,
+    target_end_date DATE NOT NULL,
+    total_estimated_minutes INTEGER DEFAULT 120 NOT NULL,
+    completion_percentage DOUBLE PRECISION DEFAULT 0.0 NOT NULL,
+    status VARCHAR(50) DEFAULT 'active' NOT NULL, -- 'active', 'completed', 'archived'
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_study_plans_student ON study_plans(student_id, status);
+
+-- 39. Study Plan Activities Table
+CREATE TABLE IF NOT EXISTS study_plan_activities (
+    id VARCHAR(36) PRIMARY KEY,
+    study_plan_id VARCHAR(36) NOT NULL REFERENCES study_plans(id) ON DELETE CASCADE,
+    subject_id VARCHAR(36) REFERENCES subjects(id) ON DELETE SET NULL,
+    topic_name VARCHAR(200) NOT NULL,
+    activity_type VARCHAR(50) DEFAULT 'reading' NOT NULL, -- 'reading', 'revision', 'practice_quiz', 'exercise'
+    title VARCHAR(255) NOT NULL,
+    instructions TEXT,
+    priority VARCHAR(20) DEFAULT 'medium' NOT NULL, -- 'high', 'medium', 'low'
+    estimated_duration_minutes INTEGER DEFAULT 30 NOT NULL,
+    recommended_material_id VARCHAR(36) REFERENCES study_materials(id) ON DELETE SET NULL,
+    practice_questions_json JSONB DEFAULT '[]'::jsonb,
+    is_completed BOOLEAN DEFAULT FALSE NOT NULL,
+    completed_at TIMESTAMP WITH TIME ZONE,
+    order_index INTEGER DEFAULT 0 NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_study_plan_acts ON study_plan_activities(study_plan_id, order_index);
+
+-- 40. Resource Recommendations Table
+CREATE TABLE IF NOT EXISTS resource_recommendations (
+    id VARCHAR(36) PRIMARY KEY,
+    student_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    material_id VARCHAR(36) NOT NULL REFERENCES study_materials(id) ON DELETE CASCADE,
+    knowledge_gap_id VARCHAR(36) REFERENCES knowledge_gaps(id) ON DELETE SET NULL,
+    recommendation_reason TEXT NOT NULL,
+    confidence_score DOUBLE PRECISION DEFAULT 0.85 NOT NULL,
+    viewed BOOLEAN DEFAULT FALSE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_res_rec_student ON resource_recommendations(student_id, viewed);
+
+-- 41. Recommendation Feedback Table
+CREATE TABLE IF NOT EXISTS recommendation_feedback (
+    id VARCHAR(36) PRIMARY KEY,
+    recommendation_id VARCHAR(36) NOT NULL REFERENCES resource_recommendations(id) ON DELETE CASCADE,
+    student_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    is_helpful BOOLEAN NOT NULL,
+    comments TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_rec_fb_rec ON recommendation_feedback(recommendation_id);
+
+-- 42. Adaptive Learning Sessions Table
+CREATE TABLE IF NOT EXISTS adaptive_learning_sessions (
+    id VARCHAR(36) PRIMARY KEY,
+    student_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    subject_id VARCHAR(36) NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
+    topic_name VARCHAR(200) NOT NULL,
+    starting_level VARCHAR(50) DEFAULT 'intermediate' NOT NULL, -- 'beginner', 'intermediate', 'advanced'
+    current_level VARCHAR(50) DEFAULT 'intermediate' NOT NULL,
+    questions_data JSONB DEFAULT '[]'::jsonb NOT NULL,
+    total_questions INTEGER DEFAULT 5 NOT NULL,
+    correct_count INTEGER DEFAULT 0 NOT NULL,
+    status VARCHAR(50) DEFAULT 'in_progress' NOT NULL, -- 'in_progress', 'completed'
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    completed_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE INDEX IF NOT EXISTS idx_adapt_sess_student ON adaptive_learning_sessions(student_id, status);
+
+-- 43. ML Models Metadata Table
+CREATE TABLE IF NOT EXISTS ml_models_metadata (
+    id VARCHAR(36) PRIMARY KEY,
+    model_name VARCHAR(100) NOT NULL,
+    model_version VARCHAR(50) NOT NULL,
+    algorithm_type VARCHAR(100) DEFAULT 'RidgeRegressor' NOT NULL,
+    r2_score DOUBLE PRECISION,
+    rmse DOUBLE PRECISION,
+    sample_size INTEGER DEFAULT 0 NOT NULL,
+    features_list JSONB DEFAULT '[]'::jsonb NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE NOT NULL,
+    trained_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+-- 44. Academic Predictions Table
+CREATE TABLE IF NOT EXISTS academic_predictions (
+    id VARCHAR(36) PRIMARY KEY,
+    student_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    model_version VARCHAR(50) NOT NULL,
+    predicted_gpa_range VARCHAR(50) NOT NULL,
+    predicted_success_score DOUBLE PRECISION NOT NULL,
+    confidence_interval VARCHAR(50) DEFAULT 'medium' NOT NULL,
+    confidence_score DOUBLE PRECISION DEFAULT 0.82 NOT NULL,
+    contributing_factors JSONB DEFAULT '{}'::jsonb NOT NULL,
+    suggested_interventions JSONB DEFAULT '[]'::jsonb NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_acad_pred_student ON academic_predictions(student_id, created_at);
+
+

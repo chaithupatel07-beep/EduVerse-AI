@@ -14,6 +14,9 @@ from app.api.v1.announcements import router as announcements_router
 from app.api.v1.ai import router as ai_router
 from app.api.v1.parent_ai import router as parent_ai_router
 from app.api.v1.communication import router as communication_router
+from app.api.v1.learning import router as learning_router
+from app.api.v1.analytics import router as analytics_router
+from app.api.v1.ml import router as ml_router
 
 api_router = APIRouter()
 
@@ -32,3 +35,6 @@ api_router.include_router(announcements_router)
 api_router.include_router(ai_router)
 api_router.include_router(parent_ai_router)
 api_router.include_router(communication_router)
+api_router.include_router(learning_router, prefix="/learning", tags=["Learning & Personalization"])
+api_router.include_router(analytics_router, prefix="/analytics", tags=["Academic Analytics"])
+api_router.include_router(ml_router, prefix="/ml", tags=["Machine Learning"])

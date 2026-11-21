@@ -77,6 +77,14 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     lesson_planner: 'Lesson Planner',
     quiz_generator: 'Practice Quiz Generator',
     source_citations: 'Source Citations & RAG Grounding',
+
+    // Phase 5 Personalization
+    personalized_learning: 'Personalized Learning Hub',
+    knowledge_gaps: 'Identified Knowledge Gaps',
+    study_plans: 'Personalized Study Plans',
+    recommendations: 'Recommended Study Resources',
+    adaptive_practice: 'Adaptive Learning Calibration',
+    child_learning_insights: 'Child Learning Insights',
   },
   te: {
     // Navigation & Common
@@ -136,6 +144,14 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     lesson_planner: 'పాఠ్య ప్రణాళిక రూపకర్త',
     quiz_generator: 'పరీక్షా ప్రశ్నల రూపకర్త',
     source_citations: 'మూల గ్రంథ సూచనలు & RAG ఆధారాలు',
+
+    // Phase 5 Personalization
+    personalized_learning: 'వ్యక్తిగతీకరించిన అభ్యాస కేంద్రం',
+    knowledge_gaps: 'గుర్తించిన జ్ఞాన అంతరాలు',
+    study_plans: 'వ్యక్తిగత అధ్యయన ప్రణాళికలు',
+    recommendations: 'సిఫార్సు చేయబడిన అధ్యయన వనరులు',
+    adaptive_practice: 'అడాప్టివ్ లెర్నింగ్ ప్రాక్టీస్',
+    child_learning_insights: 'పిల్లల అభ్యాస అంతర్దృష్టులు',
   },
   hi: {
     // Navigation & Common
@@ -195,6 +211,14 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     lesson_planner: 'पाठ योजना निर्माता',
     quiz_generator: 'अभ्यास प्रश्नोत्तरी निर्माता',
     source_citations: 'स्रोतों के संदर्भ एवं आरएजी प्रमाण',
+
+    // Phase 5 Personalization
+    personalized_learning: 'व्यक्तिगत शिक्षण केंद्र',
+    knowledge_gaps: 'पहचाने गए ज्ञान अंतराल',
+    study_plans: 'व्यक्तिगत अध्ययन योजनाएं',
+    recommendations: 'अनुशंसित अध्ययन सामग्री',
+    adaptive_practice: 'अनुकूली अभ्यास सत्र',
+    child_learning_insights: 'बच्चे की सीखने की अंतर्दृष्टि',
   },
 };
 

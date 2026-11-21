@@ -4,10 +4,10 @@
 EduVerse AI maintains an automated backend test suite using `pytest` and `httpx.AsyncClient` with an isolated SQLite async test database, testing health, authentication, role-based access control, parent-student relationships, and all Phase 3 academic management systems.
 
 - **Framework**: `pytest 8.3.4`, `pytest-asyncio 0.25.0`
-- **Total Tests**: 31
-- **Passed**: 31 (100%)
+- **Total Tests**: 39
+- **Passed**: 39 (100%)
 - **Failed**: 0
-- **Duration**: ~24.9 seconds
+- **Duration**: ~26.9 seconds
 
 ---
 
@@ -80,6 +80,16 @@ EduVerse AI maintains an automated backend test suite using `pytest` and `httpx.
 - `test_parent_ai_unlinked_child_forbidden`: Verifies strict authorization enforcement; parents attempting to query telemetry of an unlinked student receive HTTP 403 Forbidden.
 - `test_parent_ai_verified_child_telemetry`: Verifies parent AI chat grounding in verified student telemetry (attendance rate, quiz averages, pending assignments) without hallucination across English, Telugu, and Hindi.
 - `test_communication_thread_lifecycle_and_translation`: Validates creation of categorized parent communication threads, reply exchanges, and real-time on-demand translation between languages.
+
+### 2.7 Phase 5 Personalized Learning, Knowledge Gaps & ML Telemetry (`test_phase5_personalization.py`)
+- `test_student_learning_profile_generation`: Asserts dynamic learning profile calculation (GPA, Assessment Mastery, Attendance Consistency, Learning Pace, Topic Strengths and Weaknesses).
+- `test_knowledge_gap_detection_deterministic`: Verifies deterministic classification into 5 mastery states with evidence summaries, root causes, and suggested remedial actions.
+- `test_dynamic_study_plan_generation_and_activity_tracking`: Tests auto-generation of 7-day study plans targeting weak topics and activity status toggling.
+- `test_intelligent_resource_recommendation_and_feedback`: Verifies resource recommendation linking to knowledge gaps and user utility feedback recording.
+- `test_adaptive_learning_session_and_calibration`: Tests dynamic adaptive question generation and mastery difficulty progression upon attempt submission.
+- `test_student_performance_analytics_trends`: Tests longitudinal student analytics over quizzes and assignments.
+- `test_class_learning_intelligence_and_at_risk_radar`: Tests teacher class analytics, average scores, at-risk flags, and shared class knowledge gaps.
+- `test_ml_prediction_service_and_telemetry`: Tests scikit-learn regression pipeline, factor attribution weights, and heuristic fallback.
 
 ---
 
