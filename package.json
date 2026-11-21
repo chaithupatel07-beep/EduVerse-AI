@@ -1,0 +1,30 @@
+{
+  "name": "eduverse-ai",
+  "version": "1.0.0",
+  "description": "EduVerse AI – An Intelligent, Personalized and Collaborative Education Ecosystem Using Generative AI",
+  "private": true,
+  "workspaces": [
+    "web",
+    "mobile"
+  ],
+  "scripts": {
+    "dev": "npm --prefix web run dev",
+    "build": "npm --prefix web run build",
+    "backend:test": "cd backend && py -3.13 -m pytest -v",
+    "backend:seed": "cd backend && py -3.13 scripts/seed_phase1.py",
+    "backend:run": "cd backend && py -3.13 main.py",
+    "mobile:start": "cd mobile && npx expo start"
+  },
+  "keywords": [
+    "education",
+    "ai",
+    "generative-ai",
+    "rag",
+    "fastapi",
+    "react",
+    "expo",
+    "monorepo"
+  ],
+  "author": "EduVerse AI Team",
+  "license": "MIT"
+}

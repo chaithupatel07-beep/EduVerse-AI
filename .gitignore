@@ -1,0 +1,107 @@
+# ==============================================================================
+# EduVerse AI - Git Ignore Specification
+# Prevents accidental staging of dependencies, secrets, build artifacts, and caches
+# ==============================================================================
+
+# Environment & Credentials (CRITICAL: Never commit secrets)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+backend/.env
+web/.env
+web/.env.local
+mobile/.env
+*.pem
+*.key
+*.cert
+*.crt
+*firebase*.json
+*serviceAccount*.json
+*credentials*.json
+
+# Dependency Directories
+node_modules/
+backend/venv/
+backend/.venv/
+venv/
+.venv/
+env/
+
+# Python Caches & Build Artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Pytest & Coverage
+.pytest_cache/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# Web Build Outputs & Vite Caches
+web/dist/
+web/.vite/
+web/.vite-temp/
+.eslintcache
+
+# Mobile & Expo
+.expo/
+.expo-shared/
+web-build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Database & SQLite Data
+*.sqlite
+*.sqlite3
+*.db
+backend/eduverse.db
+backend/*.db
+
+# Operating System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE & Editor Configurations
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
