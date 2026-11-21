@@ -17,6 +17,11 @@ from app.api.v1.communication import router as communication_router
 from app.api.v1.learning import router as learning_router
 from app.api.v1.analytics import router as analytics_router
 from app.api.v1.ml import router as ml_router
+from app.api.v1.teacher_ai import router as teacher_ai_router
+from app.api.v1.parent_intelligence import router as parent_intelligence_router
+from app.api.v1.meetings import router as meetings_router
+from app.api.v1.notifications import router as notifications_router
+from app.api.v1.admin_intelligence import router as admin_intelligence_router
 
 api_router = APIRouter()
 
@@ -38,3 +43,8 @@ api_router.include_router(communication_router)
 api_router.include_router(learning_router, prefix="/learning", tags=["Learning & Personalization"])
 api_router.include_router(analytics_router, prefix="/analytics", tags=["Academic Analytics"])
 api_router.include_router(ml_router, prefix="/ml", tags=["Machine Learning"])
+api_router.include_router(teacher_ai_router, prefix="/teacher/ai", tags=["Teacher AI Copilot"])
+api_router.include_router(parent_intelligence_router, prefix="/parent", tags=["Parent Intelligence"])
+api_router.include_router(meetings_router, prefix="/communication/meetings", tags=["Parent-Teacher Meetings"])
+api_router.include_router(notifications_router, prefix="/notifications", tags=["Notifications"])
+api_router.include_router(admin_intelligence_router, prefix="/admin", tags=["Admin Intelligence"])

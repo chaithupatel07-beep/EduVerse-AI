@@ -785,4 +785,148 @@ CREATE TABLE IF NOT EXISTS academic_predictions (
 
 CREATE INDEX IF NOT EXISTS idx_acad_pred_student ON academic_predictions(student_id, created_at);
 
+-- ============================================================================
+-- PHASE 6: ADVANCED TEACHER, PARENT AND INSTITUTION ADMIN INTELLIGENCE
+-- ============================================================================
+
+-- 45. Lesson Plans Table (Teacher AI Copilot)
+CREATE TABLE IF NOT EXISTS lesson_plans (
+    id VARCHAR(36) PRIMARY KEY,
+    teacher_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    institution_id VARCHAR(36) NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+    subject_id VARCHAR(36) REFERENCES subjects(id) ON DELETE SET NULL,
+    class_id VARCHAR(36) REFERENCES classrooms(id) ON DELETE SET NULL,
+    title VARCHAR(255) NOT NULL,
+    topic VARCHAR(255) NOT NULL,
+    grade_level VARCHAR(50) DEFAULT 'Grade 10' NOT NULL,
+    duration_minutes INTEGER DEFAULT 45 NOT NULL,
+    learning_level VARCHAR(50) DEFAULT 'mixed' NOT NULL,
+    status VARCHAR(50) DEFAULT 'draft' NOT NULL, -- draft, reviewed, approved, published
+    language VARCHAR(10) DEFAULT 'en' NOT NULL,
+    content_json JSONB DEFAULT '{}'::jsonb NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_lesson_plan_teacher ON lesson_plans(teacher_id, status);
+
+-- 46. Question Papers Table (Teacher AI Copilot)
+CREATE TABLE IF NOT EXISTS question_papers (
+    id VARCHAR(36) PRIMARY KEY,
+    teacher_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    institution_id VARCHAR(36) NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+    subject_id VARCHAR(36) REFERENCES subjects(id) ON DELETE SET NULL,
+    class_id VARCHAR(36) REFERENCES classrooms(id) ON DELETE SET NULL,
+    title VARCHAR(255) NOT NULL,
+    topics_json JSONB DEFAULT '[]'::jsonb NOT NULL,
+    total_marks DOUBLE PRECISION DEFAULT 100.0 NOT NULL,
+    duration_minutes INTEGER DEFAULT 180 NOT NULL,
+    difficulty_level VARCHAR(50) DEFAULT 'medium' NOT NULL,
+    status VARCHAR(50) DEFAULT 'draft' NOT NULL, -- draft, reviewed, approved, published
+    language VARCHAR(10) DEFAULT 'en' NOT NULL,
+    sections_data JSONB DEFAULT '[]'::jsonb NOT NULL,
+    answer_key_data JSONB DEFAULT '{}'::jsonb NOT NULL,
+    marking_guidelines TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_qp_teacher ON question_papers(teacher_id, status);
+
+-- 47. Assignment Evaluation Suggestions Table (AI Assisted Evaluation)
+CREATE TABLE IF NOT EXISTS assignment_evaluation_suggestions (
+    id VARCHAR(36) PRIMARY KEY,
+    submission_id VARCHAR(36) NOT NULL REFERENCES assignment_submissions(id) ON DELETE CASCADE,
+    teacher_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    suggested_marks DOUBLE PRECISION NOT NULL,
+    max_marks DOUBLE PRECISION DEFAULT 100.0 NOT NULL,
+    confidence_score DOUBLE PRECISION DEFAULT 0.85 NOT NULL,
+    correct_concepts JSONB DEFAULT '[]'::jsonb NOT NULL,
+    missing_key_points JSONB DEFAULT '[]'::jsonb NOT NULL,
+    suggested_feedback TEXT NOT NULL,
+    misunderstandings JSONB DEFAULT '[]'::jsonb NOT NULL,
+    recommended_revision_topics JSONB DEFAULT '[]'::jsonb NOT NULL,
+    status VARCHAR(50) DEFAULT 'suggested' NOT NULL, -- suggested, teacher_reviewed, approved, rejected
+    teacher_approved_marks DOUBLE PRECISION,
+    teacher_final_feedback TEXT,
+    reviewed_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_eval_sugg_sub ON assignment_evaluation_suggestions(submission_id);
+
+-- 48. Meeting Requests Table (Parent–Teacher Communication)
+CREATE TABLE IF NOT EXISTS meeting_requests (
+    id VARCHAR(36) PRIMARY KEY,
+    parent_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    teacher_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    student_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    institution_id VARCHAR(36) NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+    requested_date VARCHAR(50) NOT NULL,
+    preferred_time_slot VARCHAR(50) NOT NULL,
+    subject VARCHAR(255) NOT NULL,
+    reason TEXT NOT NULL,
+    meeting_type VARCHAR(50) DEFAULT 'in_person' NOT NULL, -- in_person, online_video, phone_call
+    status VARCHAR(50) DEFAULT 'requested' NOT NULL, -- requested, confirmed, rescheduled, completed, cancelled
+    teacher_notes TEXT,
+    meeting_link VARCHAR(500),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_meeting_req_parent ON meeting_requests(parent_id, status);
+CREATE INDEX IF NOT EXISTS idx_meeting_req_teacher ON meeting_requests(teacher_id, status);
+
+-- 49. Parent Progress Reports Table (Parent Intelligence)
+CREATE TABLE IF NOT EXISTS parent_progress_reports (
+    id VARCHAR(36) PRIMARY KEY,
+    student_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    parent_id VARCHAR(36) REFERENCES users(id) ON DELETE SET NULL,
+    institution_id VARCHAR(36) NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+    report_type VARCHAR(50) DEFAULT 'weekly_summary' NOT NULL, -- weekly_summary, monthly_overview, mid_term_review
+    reporting_period_start TIMESTAMP WITH TIME ZONE,
+    reporting_period_end TIMESTAMP WITH TIME ZONE,
+    language VARCHAR(10) DEFAULT 'en' NOT NULL,
+    summary_text TEXT NOT NULL,
+    strengths_json JSONB DEFAULT '[]'::jsonb NOT NULL,
+    improvements_needed_json JSONB DEFAULT '[]'::jsonb NOT NULL,
+    parental_support_recommendations JSONB DEFAULT '[]'::jsonb NOT NULL,
+    metrics_snapshot_json JSONB DEFAULT '{}'::jsonb NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_parent_rep_student ON parent_progress_reports(student_id, report_type);
+
+-- 50. Notification Preferences Table
+CREATE TABLE IF NOT EXISTS notification_preferences (
+    id VARCHAR(36) PRIMARY KEY,
+    user_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE UNIQUE,
+    email_alerts BOOLEAN DEFAULT TRUE NOT NULL,
+    assignment_updates BOOLEAN DEFAULT TRUE NOT NULL,
+    quiz_reminders BOOLEAN DEFAULT TRUE NOT NULL,
+    academic_alerts BOOLEAN DEFAULT TRUE NOT NULL,
+    communication_messages BOOLEAN DEFAULT TRUE NOT NULL,
+    preferred_language VARCHAR(10) DEFAULT 'en' NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_notif_pref_user ON notification_preferences(user_id);
+
+-- 51. Institutional Reports Table (Admin Intelligence)
+CREATE TABLE IF NOT EXISTS institutional_reports (
+    id VARCHAR(36) PRIMARY KEY,
+    institution_id VARCHAR(36) NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+    generated_by VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    report_type VARCHAR(50) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    period VARCHAR(100) NOT NULL,
+    summary TEXT NOT NULL,
+    data_json JSONB DEFAULT '{}'::jsonb NOT NULL,
+    language VARCHAR(10) DEFAULT 'en' NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_inst_rep_inst ON institutional_reports(institution_id, report_type);
+
+
 

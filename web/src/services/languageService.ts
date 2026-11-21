@@ -85,6 +85,22 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     recommendations: 'Recommended Study Resources',
     adaptive_practice: 'Adaptive Learning Calibration',
     child_learning_insights: 'Child Learning Insights',
+
+    // Phase 6 Teacher, Parent & Admin Intelligence
+    teacher_copilot: 'Teacher AI Copilot',
+    lesson_plans: 'Standards-Aligned Lesson Plans',
+    question_papers: 'Question Papers & Answer Keys',
+    evaluation_assistant: 'AI-Assisted Evaluation',
+    remedial_guidance: 'Remedial Teaching Guidance',
+    parent_reports: 'Parent Progress Reports',
+    meetings: 'Consultation Meetings',
+    notifications: 'Notifications',
+    institutional_reports: 'Institutional Intelligence Reports',
+    evaluation_safeguard_note: 'AI marks are non-binding suggestions. All student grades require explicit faculty approval.',
+    generate_telugu_report: 'Generate in Telugu (తెలుగు)',
+    generate_hindi_report: 'Generate in Hindi (हिंदी)',
+    generate_english_report: 'Generate in English',
+    schedule_consultation: 'Schedule Parent-Teacher Consultation',
   },
   te: {
     // Navigation & Common
@@ -152,6 +168,22 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     recommendations: 'సిఫార్సు చేయబడిన అధ్యయన వనరులు',
     adaptive_practice: 'అడాప్టివ్ లెర్నింగ్ ప్రాక్టీస్',
     child_learning_insights: 'పిల్లల అభ్యాస అంతర్దృష్టులు',
+
+    // Phase 6 Teacher, Parent & Admin Intelligence
+    teacher_copilot: 'ఉపాధ్యాయ AI కోపైలట్',
+    lesson_plans: '11-విభాగాల పాఠ్య ప్రణాళికలు',
+    question_papers: 'ప్రశ్నపత్రాలు మరియు జవాబు కీలు',
+    evaluation_assistant: 'AI మూల్యాంకన సమీక్ష',
+    remedial_guidance: 'దిద్దుబాటు బోధనా మార్గదర్శకం',
+    parent_reports: 'తల్లిదండ్రుల పురోగతి నివేదికలు',
+    meetings: 'సంప్రదింపు సమావేశాలు',
+    notifications: 'నోటిఫికేషన్లు',
+    institutional_reports: 'సంస్థాగత విశ్లేషణ నివేదికలు',
+    evaluation_safeguard_note: 'AI మార్కులు కేవలం సూచనలు మాత్రమే. ఉపాధ్యాయుల ఆమోదం తర్వాతే విద్యార్థుల మార్కులు ఖరారవుతాయి.',
+    generate_telugu_report: 'తెలుగులో నివేదిక రూపొందించండి',
+    generate_hindi_report: 'హిందీలో నివేదిక రూపొందించండి',
+    generate_english_report: 'ఇంగ్లీష్‌లో నివేదిక రూపొందించండి',
+    schedule_consultation: 'ఉపాధ్యాయ సంప్రదింపు సమావేశం అభ్యర్థించండి',
   },
   hi: {
     // Navigation & Common
@@ -219,6 +251,22 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     recommendations: 'अनुशंसित अध्ययन सामग्री',
     adaptive_practice: 'अनुकूली अभ्यास सत्र',
     child_learning_insights: 'बच्चे की सीखने की अंतर्दृष्टि',
+
+    // Phase 6 Teacher, Parent & Admin Intelligence
+    teacher_copilot: 'शिक्षक एआई कोपायलट',
+    lesson_plans: 'पाठ योजनाएं (11-अनुभाग)',
+    question_papers: 'प्रश्न पत्र और उत्तर कुंजी',
+    evaluation_assistant: 'एआई-सहायता प्राप्त मूल्यांकन',
+    remedial_guidance: 'उपचारात्मक शिक्षण मार्गदर्शन',
+    parent_reports: 'अभिभावक प्रगति रिपोर्ट',
+    meetings: 'परामर्श बैठकें',
+    notifications: 'सूचनाएं',
+    institutional_reports: 'संस्थागत रिपोर्ट',
+    evaluation_safeguard_note: 'एआई अंक केवल सुझाव हैं। शिक्षक की पुष्टि के बिना कोई भी अंक प्रकाशित नहीं होता।',
+    generate_telugu_report: 'तेलुगु में रिपोर्ट बनाएं',
+    generate_hindi_report: 'हिंदी में रिपोर्ट बनाएं',
+    generate_english_report: 'अंग्रेजी में रिपोर्ट बनाएं',
+    schedule_consultation: 'शिक्षक परामर्श बैठक का अनुरोध करें',
   },
 };
 

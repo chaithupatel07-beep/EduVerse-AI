@@ -3,11 +3,11 @@
 ## 1. Test Suite Summary
 EduVerse AI maintains an automated backend test suite using `pytest` and `httpx.AsyncClient` with an isolated SQLite async test database, testing health, authentication, role-based access control, parent-student relationships, and all Phase 3 academic management systems.
 
-- **Framework**: `pytest 8.3.4`, `pytest-asyncio 0.25.0`
-- **Total Tests**: 39
-- **Passed**: 39 (100%)
+- **Framework**: `pytest 9.2.0`, `pytest-asyncio 1.4.1`
+- **Total Tests**: 48
+- **Passed**: 48 (100%)
 - **Failed**: 0
-- **Duration**: ~26.9 seconds
+- **Duration**: ~29.4 seconds
 
 ---
 
@@ -92,9 +92,19 @@ EduVerse AI maintains an automated backend test suite using `pytest` and `httpx.
 - `test_ml_prediction_service_and_telemetry`: Tests scikit-learn regression pipeline, factor attribution weights, and model metadata.
 - `test_transparent_rule_based_fallback_integrity`: Verifies that students with insufficient/zero historical records transparently engage the rule-based alternative with explicit uncertainty bounds instead of fabricating an ML score.
 
+### 2.8 Phase 6 Advanced Teacher Copilot, Parent Consultation & Admin Intelligence (`test_phase6_intelligence.py`)
+- `test_teacher_copilot_lesson_plan_generation`: Validates creation of structured 11-section lesson plans with learning outcomes, 5E structure, formative assessments, and pedagogical differentiation across English, Telugu, and Hindi.
+- `test_teacher_copilot_question_paper_and_answer_key`: Asserts multi-section exam generation (MCQs, short answer, long/case study) with cognitive distribution and a strictly separated answer key and marking scheme.
+- `test_teacher_copilot_teaching_material_assistant`: Tests generation of conceptual real-world analogies, misconception alerts, and dual-track explanations (struggling vs. advanced).
+- `test_teacher_copilot_remedial_guidance`: Verifies dynamic aggregation of student knowledge gaps for a classroom cohort to synthesize evidence-backed remedial teaching plans.
+- `test_ai_evaluation_assistant_and_teacher_safeguard`: Tests AI rubric evaluation suggestions on student submissions, verifying that suggestions remain provisional (`suggested`) until explicit teacher review and approval.
+- `test_parent_progress_report_generation`: Asserts parent progress report generation in Telugu, Hindi, and English grounded in actual student attendance, quiz grades, and assignment data without fabrication.
+- `test_parent_teacher_meeting_workflow`: Validates the end-to-end parent-teacher consultation request flow, authorization enforcement (unlinked parents rejected), and teacher confirmation with meeting links.
+- `test_in_app_notifications_and_admin_intelligence`: Tests notification creation, unread count polling, preference settings, and institution admin communication resolution analytics.
+
 ---
 
 ## 3. Frontend & Mobile Verification
 - **Web App (`web/`)**: Built and verified with `npm run build` (`tsc && vite build`) with 0 errors and all role dashboards fully functional.
 - **Mobile App (`mobile/`)**: Type interfaces aligned with backend models, API service connected, and all role screens wired.
-- **Full Test Suite Status**: **40 / 40 passing tests** across all modules.
+- **Full Test Suite Status**: **48 / 48 passing tests (100% success rate)** across all modules.

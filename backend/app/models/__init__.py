@@ -47,6 +47,15 @@ from app.models.ml import (
     MLModelMetadata,
     AcademicPrediction,
 )
+from app.models.intelligence import (
+    LessonPlan,
+    QuestionPaper,
+    AssignmentEvaluationSuggestion,
+    MeetingRequest,
+    ParentProgressReport,
+    NotificationPreference,
+    InstitutionalReport,
+)
 
 __all__ = [
     "Base",
@@ -97,4 +106,11 @@ __all__ = [
     "AdaptiveLearningSession",
     "MLModelMetadata",
     "AcademicPrediction",
+    "LessonPlan",
+    "QuestionPaper",
+    "AssignmentEvaluationSuggestion",
+    "MeetingRequest",
+    "ParentProgressReport",
+    "NotificationPreference",
+    "InstitutionalReport",
 ]
