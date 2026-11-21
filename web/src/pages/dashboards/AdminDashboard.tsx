@@ -408,6 +408,40 @@ export const AdminDashboard: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <Sparkles size={16} className="text-indigo-600" />
+                  <span>Phase 6.5 Innovation Adoption & Learning Metrics</span>
+                </h3>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700">
+                  Ecosystem Telemetry
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                <div className="p-3 bg-indigo-50/50 rounded-xl border border-indigo-100">
+                  <p className="text-[10px] text-indigo-600 font-bold uppercase">Mock Exams</p>
+                  <p className="text-xl font-black text-indigo-950">Active</p>
+                  <p className="text-[9px] text-indigo-500 mt-0.5">Auto-Evaluated</p>
+                </div>
+                <div className="p-3 bg-teal-50/50 rounded-xl border border-teal-100">
+                  <p className="text-[10px] text-teal-600 font-bold uppercase">OCR Notes</p>
+                  <p className="text-xl font-black text-teal-950">Digitized</p>
+                  <p className="text-[9px] text-teal-500 mt-0.5">RAG Indexed</p>
+                </div>
+                <div className="p-3 bg-amber-50/50 rounded-xl border border-amber-100">
+                  <p className="text-[10px] text-amber-600 font-bold uppercase">Gamification</p>
+                  <p className="text-xl font-black text-amber-950">Active</p>
+                  <p className="text-[9px] text-amber-500 mt-0.5">XP & Badges</p>
+                </div>
+                <div className="p-3 bg-rose-50/50 rounded-xl border border-rose-100">
+                  <p className="text-[10px] text-rose-600 font-bold uppercase">Early Warning</p>
+                  <p className="text-xl font-black text-rose-950">Monitored</p>
+                  <p className="text-[9px] text-rose-500 mt-0.5">Multilingual EN/TE/HI</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
               <h3 className="text-sm font-bold text-slate-900">Academic Structure Summary</h3>
               <div className="grid grid-cols-3 gap-3 text-center">
                 <div className="p-3 bg-slate-50 rounded-xl border">

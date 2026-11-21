@@ -6,6 +6,7 @@ import { aiService, ChildTelemetry, SuggestedInquiry } from '../../services/aiSe
 import { communicationService, CommunicationThread } from '../../services/communicationService';
 import { languageService, SupportedLanguage } from '../../services/languageService';
 import { personalizationService, LearningProfile, KnowledgeGap } from '../../services/personalizationService';
+import { VoiceAssistantWidget } from '../../components/innovation/VoiceAssistantWidget';
 import {
   StudentAttendanceSummary,
   StudentProgressSummary,
@@ -708,6 +709,12 @@ export const ParentDashboard: React.FC = () => {
                         : 'Ask your academic inquiry here (e.g., How is my child performing in math?)...'
                   }
                   className="flex-1 bg-white border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl px-4 py-2.5 text-xs text-slate-900 outline-none transition"
+                />
+
+                <VoiceAssistantWidget
+                  currentLanguage={currentLang as any}
+                  onTranscriptReady={(t) => setInputQuery(t)}
+                  lastResponseText={chatMessages[chatMessages.length - 1]?.content}
                 />
 
                 <button

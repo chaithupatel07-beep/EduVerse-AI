@@ -930,3 +930,285 @@ CREATE INDEX IF NOT EXISTS idx_inst_rep_inst ON institutional_reports(institutio
 
 
 
+-- ============================================================================
+-- PHASE 6.5: INNOVATION, SMART LEARNING EXPERIENCE AND HACKATHON DIFFERENTIATION
+-- ============================================================================
+
+-- 52. Mock Exams Table
+CREATE TABLE IF NOT EXISTS mock_exams (
+    id VARCHAR(36) PRIMARY KEY,
+    institution_id VARCHAR(36) NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+    created_by VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    class_id VARCHAR(36) REFERENCES classrooms(id) ON DELETE SET NULL,
+    subject_id VARCHAR(36) REFERENCES subjects(id) ON DELETE SET NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    topic_focus VARCHAR(255),
+    difficulty_level VARCHAR(50) DEFAULT 'medium' NOT NULL,
+    duration_minutes INTEGER DEFAULT 60 NOT NULL,
+    total_marks DOUBLE PRECISION DEFAULT 100.0 NOT NULL,
+    passing_percentage DOUBLE PRECISION DEFAULT 40.0 NOT NULL,
+    language VARCHAR(10) DEFAULT 'en' NOT NULL,
+    question_types JSONB DEFAULT '["mcq", "true_false", "short_answer"]'::jsonb NOT NULL,
+    is_published BOOLEAN DEFAULT TRUE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_mock_exams_inst ON mock_exams(institution_id);
+CREATE INDEX IF NOT EXISTS idx_mock_exams_creator ON mock_exams(created_by);
+
+-- 53. Mock Exam Questions Table
+CREATE TABLE IF NOT EXISTS mock_exam_questions (
+    id VARCHAR(36) PRIMARY KEY,
+    exam_id VARCHAR(36) NOT NULL REFERENCES mock_exams(id) ON DELETE CASCADE,
+    question_text TEXT NOT NULL,
+    question_type VARCHAR(50) DEFAULT 'mcq' NOT NULL,
+    section VARCHAR(50) DEFAULT 'Section A' NOT NULL,
+    order_index INTEGER DEFAULT 1 NOT NULL,
+    marks DOUBLE PRECISION DEFAULT 1.0 NOT NULL,
+    options JSONB,
+    correct_answer TEXT NOT NULL,
+    explanation TEXT,
+    topic_tag VARCHAR(150),
+    cognitive_level VARCHAR(50) DEFAULT 'understand',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_mock_exam_q_exam ON mock_exam_questions(exam_id);
+
+-- 54. Mock Exam Attempts Table
+CREATE TABLE IF NOT EXISTS mock_exam_attempts (
+    id VARCHAR(36) PRIMARY KEY,
+    exam_id VARCHAR(36) NOT NULL REFERENCES mock_exams(id) ON DELETE CASCADE,
+    student_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status VARCHAR(50) DEFAULT 'in_progress' NOT NULL,
+    total_score DOUBLE PRECISION DEFAULT 0.0 NOT NULL,
+    max_possible_score DOUBLE PRECISION DEFAULT 100.0 NOT NULL,
+    percentage DOUBLE PRECISION DEFAULT 0.0 NOT NULL,
+    accuracy_percentage DOUBLE PRECISION DEFAULT 0.0 NOT NULL,
+    time_taken_seconds INTEGER DEFAULT 0 NOT NULL,
+    passed BOOLEAN DEFAULT FALSE NOT NULL,
+    subject_breakdown JSONB DEFAULT '{}'::jsonb NOT NULL,
+    topic_breakdown JSONB DEFAULT '{}'::jsonb NOT NULL,
+    ai_feedback_summary TEXT,
+    recommended_revision_topics JSONB DEFAULT '[]'::jsonb NOT NULL,
+    started_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    submitted_at TIMESTAMP WITH TIME ZONE
+);
+CREATE INDEX IF NOT EXISTS idx_mock_exam_att_student ON mock_exam_attempts(student_id);
+
+-- 55. Mock Exam Answers Table
+CREATE TABLE IF NOT EXISTS mock_exam_answers (
+    id VARCHAR(36) PRIMARY KEY,
+    attempt_id VARCHAR(36) NOT NULL REFERENCES mock_exam_attempts(id) ON DELETE CASCADE,
+    question_id VARCHAR(36) NOT NULL REFERENCES mock_exam_questions(id) ON DELETE CASCADE,
+    student_answer TEXT,
+    is_correct BOOLEAN DEFAULT FALSE NOT NULL,
+    marks_awarded DOUBLE PRECISION DEFAULT 0.0 NOT NULL,
+    evaluation_type VARCHAR(50) DEFAULT 'auto_objective' NOT NULL,
+    ai_feedback TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_mock_exam_ans_att ON mock_exam_answers(attempt_id);
+
+-- 56. Scanned Documents Table (Smart Notes Scanner)
+CREATE TABLE IF NOT EXISTS scanned_documents (
+    id VARCHAR(36) PRIMARY KEY,
+    institution_id VARCHAR(36) NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+    student_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    subject_id VARCHAR(36) REFERENCES subjects(id) ON DELETE SET NULL,
+    title VARCHAR(255) NOT NULL,
+    document_type VARCHAR(50) DEFAULT 'notes' NOT NULL,
+    file_path VARCHAR(500),
+    file_name VARCHAR(255) NOT NULL,
+    file_size INTEGER DEFAULT 0 NOT NULL,
+    mime_type VARCHAR(100) NOT NULL,
+    detected_language VARCHAR(10) DEFAULT 'en' NOT NULL,
+    ocr_status VARCHAR(50) DEFAULT 'pending' NOT NULL,
+    ocr_confidence DOUBLE PRECISION DEFAULT 0.9 NOT NULL,
+    is_indexed_in_rag BOOLEAN DEFAULT FALSE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_scanned_docs_student ON scanned_documents(student_id);
+
+-- 57. Document Extracted Texts Table
+CREATE TABLE IF NOT EXISTS document_extracted_texts (
+    id VARCHAR(36) PRIMARY KEY,
+    document_id VARCHAR(36) NOT NULL REFERENCES scanned_documents(id) ON DELETE CASCADE UNIQUE,
+    raw_extracted_text TEXT NOT NULL,
+    cleaned_text TEXT NOT NULL,
+    user_edited_text TEXT,
+    extracted_key_concepts JSONB DEFAULT '[]'::jsonb NOT NULL,
+    summary TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_doc_extracted_doc ON document_extracted_texts(document_id);
+
+-- 58. Study Timetables Table
+CREATE TABLE IF NOT EXISTS study_timetables (
+    id VARCHAR(36) PRIMARY KEY,
+    institution_id VARCHAR(36) NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+    student_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    schedule_title VARCHAR(200) DEFAULT 'Weekly AI Study Schedule' NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    daily_available_hours DOUBLE PRECISION DEFAULT 3.0 NOT NULL,
+    status VARCHAR(50) DEFAULT 'active' NOT NULL,
+    optimization_goal VARCHAR(100) DEFAULT 'exam_prep' NOT NULL,
+    ai_generated_notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_study_timetables_student ON study_timetables(student_id);
+
+-- 59. Study Session Entries Table
+CREATE TABLE IF NOT EXISTS study_session_entries (
+    id VARCHAR(36) PRIMARY KEY,
+    timetable_id VARCHAR(36) NOT NULL REFERENCES study_timetables(id) ON DELETE CASCADE,
+    student_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    subject_name VARCHAR(150) NOT NULL,
+    topic_name VARCHAR(200) NOT NULL,
+    session_type VARCHAR(50) DEFAULT 'revision' NOT NULL,
+    day_of_week VARCHAR(20) NOT NULL,
+    scheduled_start TIMESTAMP WITH TIME ZONE NOT NULL,
+    scheduled_end TIMESTAMP WITH TIME ZONE NOT NULL,
+    duration_minutes INTEGER DEFAULT 45 NOT NULL,
+    priority VARCHAR(50) DEFAULT 'medium' NOT NULL,
+    linked_gap_id VARCHAR(36) REFERENCES knowledge_gaps(id) ON DELETE SET NULL,
+    is_completed BOOLEAN DEFAULT FALSE NOT NULL,
+    completed_at TIMESTAMP WITH TIME ZONE,
+    missed_and_rescheduled BOOLEAN DEFAULT FALSE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_study_sessions_timetable ON study_session_entries(timetable_id);
+
+-- 60. Gamification Profiles Table
+CREATE TABLE IF NOT EXISTS gamification_profiles (
+    id VARCHAR(36) PRIMARY KEY,
+    user_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE UNIQUE,
+    institution_id VARCHAR(36) NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+    total_xp INTEGER DEFAULT 100 NOT NULL,
+    current_level INTEGER DEFAULT 1 NOT NULL,
+    level_title VARCHAR(100) DEFAULT 'Curious Explorer' NOT NULL,
+    streak_days INTEGER DEFAULT 1 NOT NULL,
+    longest_streak_days INTEGER DEFAULT 1 NOT NULL,
+    last_activity_date DATE DEFAULT CURRENT_DATE NOT NULL,
+    daily_goal_xp INTEGER DEFAULT 50 NOT NULL,
+    today_xp INTEGER DEFAULT 10 NOT NULL,
+    leaderboard_opt_in BOOLEAN DEFAULT TRUE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_gamification_user ON gamification_profiles(user_id);
+
+-- 61. Achievement Badges Table
+CREATE TABLE IF NOT EXISTS achievement_badges (
+    id VARCHAR(36) PRIMARY KEY,
+    badge_code VARCHAR(100) UNIQUE NOT NULL,
+    name VARCHAR(150) NOT NULL,
+    description TEXT NOT NULL,
+    category VARCHAR(50) DEFAULT 'academic' NOT NULL,
+    icon VARCHAR(100) DEFAULT 'award' NOT NULL,
+    xp_reward INTEGER DEFAULT 100 NOT NULL,
+    criteria_summary VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+-- 62. Earned Badges Table
+CREATE TABLE IF NOT EXISTS earned_badges (
+    id VARCHAR(36) PRIMARY KEY,
+    profile_id VARCHAR(36) NOT NULL REFERENCES gamification_profiles(id) ON DELETE CASCADE,
+    badge_id VARCHAR(36) NOT NULL REFERENCES achievement_badges(id) ON DELETE CASCADE,
+    earned_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    evidence_note VARCHAR(255),
+    CONSTRAINT uq_profile_badge UNIQUE (profile_id, badge_id)
+);
+CREATE INDEX IF NOT EXISTS idx_earned_badges_profile ON earned_badges(profile_id);
+
+-- 63. Point Transactions Table
+CREATE TABLE IF NOT EXISTS point_transactions (
+    id VARCHAR(36) PRIMARY KEY,
+    profile_id VARCHAR(36) NOT NULL REFERENCES gamification_profiles(id) ON DELETE CASCADE,
+    amount INTEGER NOT NULL,
+    reason VARCHAR(255) NOT NULL,
+    reference_id VARCHAR(100),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_point_tx_profile ON point_transactions(profile_id);
+
+-- 64. Knowledge Nodes Table
+CREATE TABLE IF NOT EXISTS knowledge_nodes (
+    id VARCHAR(36) PRIMARY KEY,
+    institution_id VARCHAR(36) NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+    subject_id VARCHAR(36) REFERENCES subjects(id) ON DELETE SET NULL,
+    node_type VARCHAR(50) DEFAULT 'topic' NOT NULL,
+    label VARCHAR(200) NOT NULL,
+    description TEXT,
+    difficulty VARCHAR(50) DEFAULT 'medium' NOT NULL,
+    estimated_hours DOUBLE PRECISION DEFAULT 2.0 NOT NULL,
+    pos_x DOUBLE PRECISION DEFAULT 0.0 NOT NULL,
+    pos_y DOUBLE PRECISION DEFAULT 0.0 NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_knowledge_nodes_subject ON knowledge_nodes(subject_id);
+
+-- 65. Knowledge Edges Table
+CREATE TABLE IF NOT EXISTS knowledge_edges (
+    id VARCHAR(36) PRIMARY KEY,
+    source_node_id VARCHAR(36) NOT NULL REFERENCES knowledge_nodes(id) ON DELETE CASCADE,
+    target_node_id VARCHAR(36) NOT NULL REFERENCES knowledge_nodes(id) ON DELETE CASCADE,
+    relationship_type VARCHAR(50) DEFAULT 'prerequisite' NOT NULL,
+    weight DOUBLE PRECISION DEFAULT 1.0 NOT NULL,
+    CONSTRAINT uq_knowledge_edge UNIQUE (source_node_id, target_node_id, relationship_type)
+);
+
+-- 66. Student Node Masteries Table
+CREATE TABLE IF NOT EXISTS student_node_masteries (
+    id VARCHAR(36) PRIMARY KEY,
+    student_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    node_id VARCHAR(36) NOT NULL REFERENCES knowledge_nodes(id) ON DELETE CASCADE,
+    mastery_state VARCHAR(50) DEFAULT 'in_progress' NOT NULL,
+    mastery_score DOUBLE PRECISION DEFAULT 0.5 NOT NULL,
+    practice_count INTEGER DEFAULT 1 NOT NULL,
+    last_assessed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT uq_student_node_mastery UNIQUE (student_id, node_id)
+);
+CREATE INDEX IF NOT EXISTS idx_student_node_mastery_stud ON student_node_masteries(student_id);
+
+-- 67. Early Warning Alerts Table
+CREATE TABLE IF NOT EXISTS early_warning_alerts (
+    id VARCHAR(36) PRIMARY KEY,
+    institution_id VARCHAR(36) NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+    student_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    class_id VARCHAR(36) REFERENCES classrooms(id) ON DELETE SET NULL,
+    risk_level VARCHAR(50) DEFAULT 'moderate' NOT NULL,
+    alert_category VARCHAR(100) DEFAULT 'academic_performance' NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    evidence_summary TEXT NOT NULL,
+    recommended_intervention TEXT NOT NULL,
+    is_acknowledged BOOLEAN DEFAULT FALSE NOT NULL,
+    acknowledged_by VARCHAR(36) REFERENCES users(id) ON DELETE SET NULL,
+    acknowledged_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_early_alerts_student ON early_warning_alerts(student_id);
+CREATE INDEX IF NOT EXISTS idx_early_alerts_risk ON early_warning_alerts(risk_level);
+
+-- 68. Intervention Records Table
+CREATE TABLE IF NOT EXISTS intervention_records (
+    id VARCHAR(36) PRIMARY KEY,
+    alert_id VARCHAR(36) NOT NULL REFERENCES early_warning_alerts(id) ON DELETE CASCADE,
+    assigned_teacher_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    student_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    action_type VARCHAR(100) DEFAULT 'remedial_session' NOT NULL,
+    status VARCHAR(50) DEFAULT 'assigned' NOT NULL,
+    notes TEXT,
+    scheduled_for TIMESTAMP WITH TIME ZONE,
+    completed_at TIMESTAMP WITH TIME ZONE,
+    outcome_evaluation VARCHAR(100),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_interventions_teacher ON intervention_records(assigned_teacher_id);
+CREATE INDEX IF NOT EXISTS idx_interventions_student ON intervention_records(student_id);

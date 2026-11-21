@@ -11,6 +11,12 @@ import {
   ResourceRecommendation,
 } from '../../services/personalizationService';
 import { analyticsService, AcademicPrediction } from '../../services/analyticsService';
+import { ExamSimulatorTab } from '../../components/innovation/ExamSimulatorTab';
+import { NotesScannerTab } from '../../components/innovation/NotesScannerTab';
+import { SmartTimetableTab } from '../../components/innovation/SmartTimetableTab';
+import { GamificationTab } from '../../components/innovation/GamificationTab';
+import { VisualKnowledgeMapTab } from '../../components/innovation/VisualKnowledgeMapTab';
+import { VoiceAssistantWidget } from '../../components/innovation/VoiceAssistantWidget';
 import {
   EnrolledClass,
   StudyMaterial,
@@ -57,7 +63,20 @@ import {
 export const StudentDashboard: React.FC = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'personalized_learning' | 'ai_companion' | 'courses' | 'materials' | 'assignments' | 'quizzes' | 'attendance' | 'announcements'
+    | 'overview'
+    | 'personalized_learning'
+    | 'ai_companion'
+    | 'exam_simulator'
+    | 'notes_scanner'
+    | 'smart_timetable'
+    | 'gamification'
+    | 'knowledge_map'
+    | 'courses'
+    | 'materials'
+    | 'assignments'
+    | 'quizzes'
+    | 'attendance'
+    | 'announcements'
   >('overview');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -472,6 +491,11 @@ export const StudentDashboard: React.FC = () => {
       <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto">
         {[
           { id: 'overview', label: 'Overview' },
+          { id: 'exam_simulator', label: 'Exam Simulator (Phase 6.5)' },
+          { id: 'notes_scanner', label: 'Notes Scanner & Doubt Solver (Phase 6.5)' },
+          { id: 'smart_timetable', label: 'Smart Timetable (Phase 6.5)' },
+          { id: 'gamification', label: 'Gamification & Badges (Phase 6.5)' },
+          { id: 'knowledge_map', label: 'Visual Knowledge Map (Phase 6.5)' },
           { id: 'personalized_learning', label: 'Personalized Learning & ML (Phase 5)' },
           { id: 'ai_companion', label: 'AI Study Companion (RAG)' },
           { id: 'courses', label: `My Courses (${enrolledClasses.length})` },
@@ -1326,6 +1350,11 @@ export const StudentDashboard: React.FC = () => {
                     }
                     className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-900 outline-none"
                   />
+                  <VoiceAssistantWidget
+                    currentLanguage={aiSelectedLanguage as any}
+                    onTranscriptReady={(t) => setAiInputQuery(t)}
+                    lastResponseText={aiChatMessages[aiChatMessages.length - 1]?.content}
+                  />
                   <button
                     type="submit"
                     disabled={!aiInputQuery.trim() || isAiLoading}
@@ -1879,6 +1908,12 @@ export const StudentDashboard: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Phase 6.5 Innovation Tabs */}
+      {activeTab === 'exam_simulator' && <ExamSimulatorTab />}
+      {activeTab === 'notes_scanner' && <NotesScannerTab />}
+      {activeTab === 'smart_timetable' && <SmartTimetableTab />}
+      {activeTab === 'gamification' && <GamificationTab />}
+      {activeTab === 'knowledge_map' && <VisualKnowledgeMapTab />}
     </div>
   );
 };

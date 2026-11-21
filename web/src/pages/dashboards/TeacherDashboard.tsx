@@ -57,11 +57,12 @@ import {
   parentIntelligenceService,
   MeetingRequest,
 } from '../../services/parentIntelligenceService';
+import { EarlyWarningTab } from '../../components/innovation/EarlyWarningTab';
 
 export const TeacherDashboard: React.FC = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<
-    'classes' | 'class_analytics' | 'ai_copilot' | 'meetings' | 'parent_inquiries' | 'materials' | 'assignments' | 'quizzes' | 'attendance' | 'announcements'
+    'classes' | 'early_warning' | 'class_analytics' | 'ai_copilot' | 'meetings' | 'parent_inquiries' | 'materials' | 'assignments' | 'quizzes' | 'attendance' | 'announcements'
   >('classes');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -663,6 +664,7 @@ export const TeacherDashboard: React.FC = () => {
       <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto">
         {[
           { id: 'classes', label: 'My Classrooms & Students' },
+          { id: 'early_warning', label: 'Early-Warning & Interventions (Phase 6.5)' },
           { id: 'class_analytics', label: 'Class Learning Intelligence (Phase 5)' },
           { id: 'ai_copilot', label: 'AI Educator Copilot (Phase 6)' },
           { id: 'meetings', label: `Consultation Meetings (${meetingsList.length})` },
@@ -676,11 +678,10 @@ export const TeacherDashboard: React.FC = () => {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition whitespace-nowrap ${
-              activeTab === tab.id
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition whitespace-nowrap ${activeTab === tab.id
                 ? 'bg-blue-600 text-white shadow-sm'
                 : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-            }`}
+              }`}
           >
             {tab.label}
           </button>
@@ -696,11 +697,10 @@ export const TeacherDashboard: React.FC = () => {
               <div
                 key={cl.class_id}
                 onClick={() => handleClassSelectionChange(cl.class_id)}
-                className={`p-4 rounded-xl border cursor-pointer transition ${
-                  selectedClassId === cl.class_id
+                className={`p-4 rounded-xl border cursor-pointer transition ${selectedClassId === cl.class_id
                     ? 'border-blue-500 bg-blue-50/50 shadow-sm'
                     : 'border-slate-200 bg-white hover:bg-slate-50'
-                }`}
+                  }`}
               >
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">
@@ -992,11 +992,10 @@ export const TeacherDashboard: React.FC = () => {
                   <button
                     key={sub.id}
                     onClick={() => setAiCopilotSubTab(sub.id as any)}
-                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap ${
-                      isSubActive
+                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap ${isSubActive
                         ? 'bg-amber-400 text-slate-950 shadow-md'
                         : 'bg-white/10 hover:bg-white/20 text-indigo-100'
-                    }`}
+                      }`}
                   >
                     <SubIcon size={14} />
                     <span>{sub.label}</span>
@@ -1095,9 +1094,8 @@ export const TeacherDashboard: React.FC = () => {
                   </div>
                   {generatedLessonPlan && (
                     <div className="flex items-center gap-2">
-                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase ${
-                        lessonPlanStatus === 'published' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                      }`}>
+                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase ${lessonPlanStatus === 'published' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                        }`}>
                         {lessonPlanStatus}
                       </span>
                       {lessonPlanStatus !== 'published' && (
@@ -1675,11 +1673,10 @@ export const TeacherDashboard: React.FC = () => {
                   <div
                     key={t.id}
                     onClick={() => setSelectedParentThread(t)}
-                    className={`p-3 rounded-xl border cursor-pointer transition text-xs space-y-1 ${
-                      selectedParentThread?.id === t.id
+                    className={`p-3 rounded-xl border cursor-pointer transition text-xs space-y-1 ${selectedParentThread?.id === t.id
                         ? 'border-indigo-600 bg-indigo-50/70 shadow-sm'
                         : 'border-slate-200 bg-white hover:bg-slate-50'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-slate-900 truncate max-w-[150px]">{t.subject}</span>
@@ -1835,9 +1832,8 @@ export const TeacherDashboard: React.FC = () => {
                         <p className="text-[10px] text-slate-500">{m.preferred_time_slot}</p>
                       </td>
                       <td className="py-2.5 px-3">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                          m.meeting_type === 'online_video' ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-100 text-slate-700'
-                        }`}>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${m.meeting_type === 'online_video' ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-100 text-slate-700'
+                          }`}>
                           {m.meeting_type.replace('_', ' ').toUpperCase()}
                         </span>
                       </td>
@@ -1856,13 +1852,12 @@ export const TeacherDashboard: React.FC = () => {
                         )}
                       </td>
                       <td className="py-2.5 px-3">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
-                          m.status === 'confirmed'
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${m.status === 'confirmed'
                             ? 'bg-emerald-100 text-emerald-800'
                             : m.status === 'completed'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-amber-100 text-amber-800'
-                        }`}>
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-amber-100 text-amber-800'
+                          }`}>
                           {m.status}
                         </span>
                       </td>
@@ -2114,15 +2109,14 @@ export const TeacherDashboard: React.FC = () => {
                               onClick={() =>
                                 setAttendanceRecords((prev) => ({ ...prev, [st.student_id]: mode }))
                               }
-                              className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition ${
-                                status === mode
+                              className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition ${status === mode
                                   ? mode === 'present'
                                     ? 'bg-emerald-600 text-white'
                                     : mode === 'late'
-                                    ? 'bg-amber-500 text-white'
-                                    : 'bg-red-600 text-white'
+                                      ? 'bg-amber-500 text-white'
+                                      : 'bg-red-600 text-white'
                                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                              }`}
+                                }`}
                             >
                               {mode}
                             </button>
@@ -2569,6 +2563,8 @@ export const TeacherDashboard: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Phase 6.5 Early Warning & Interventions */}
+      {activeTab === 'early_warning' && <EarlyWarningTab />}
     </div>
   );
 };

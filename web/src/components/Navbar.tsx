@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { RoleBadge } from './RoleBadge';
 import { QuickRoleSwitcher } from './QuickRoleSwitcher';
 import { LanguageSelector } from './LanguageSelector';
+import { AccessibilityToolbar } from './AccessibilityToolbar';
 import { educationService } from '../services/educationService';
 import { NotificationItem } from '../types';
 import {
@@ -101,6 +102,11 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate, onToggl
               <>
                 {/* Instant Role Switcher */}
                 <QuickRoleSwitcher onRoleSwitched={() => onNavigate('dashboard')} />
+
+                {/* Accessibility Toolbar */}
+                <div className="hidden md:flex">
+                  <AccessibilityToolbar />
+                </div>
 
                 {/* Multilingual Selector */}
                 <LanguageSelector />

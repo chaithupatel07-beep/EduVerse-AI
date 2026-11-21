@@ -22,6 +22,13 @@ from app.api.v1.parent_intelligence import router as parent_intelligence_router
 from app.api.v1.meetings import router as meetings_router
 from app.api.v1.notifications import router as notifications_router
 from app.api.v1.admin_intelligence import router as admin_intelligence_router
+from app.api.v1.examinations import router as examinations_router
+from app.api.v1.ocr import router as ocr_router
+from app.api.v1.scheduling import router as scheduling_router
+from app.api.v1.gamification import router as gamification_router
+from app.api.v1.knowledge_map import router as knowledge_map_router
+from app.api.v1.interventions import router as interventions_router
+from app.api.v1.voice import router as voice_router
 
 api_router = APIRouter()
 
@@ -48,3 +55,10 @@ api_router.include_router(parent_intelligence_router, prefix="/parent", tags=["P
 api_router.include_router(meetings_router, prefix="/communication/meetings", tags=["Parent-Teacher Meetings"])
 api_router.include_router(notifications_router, prefix="/notifications", tags=["Notifications"])
 api_router.include_router(admin_intelligence_router, prefix="/admin", tags=["Admin Intelligence"])
+api_router.include_router(examinations_router)
+api_router.include_router(ocr_router)
+api_router.include_router(scheduling_router)
+api_router.include_router(gamification_router)
+api_router.include_router(knowledge_map_router)
+api_router.include_router(interventions_router)
+api_router.include_router(voice_router)
