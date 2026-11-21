@@ -9,7 +9,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { UserRole, UserProfile } from '../types';
-import { mobileApi } from '../services/api';
+import { mobileApi, setAuthToken } from '../services/api';
 
 interface LoginScreenProps {
   onLoginSuccess: (user: UserProfile) => void;
@@ -47,6 +47,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       });
 
       const userData = response.data?.data?.user;
+      const token = response.data?.data?.tokens?.access_token;
+      if (token) {
+        setAuthToken(token);
+      }
       if (userData) {
         onLoginSuccess(userData);
       }

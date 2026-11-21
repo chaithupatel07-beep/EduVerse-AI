@@ -19,7 +19,7 @@ EduVerse AI unifies **Students**, **Teachers**, **Parents**, and **Institution A
 |:---:|---|:---:|
 | **Phase 1** | Project Foundation, Architecture, Monorepo & GitHub Setup | Completed |
 | **Phase 2** | Advanced Authentication, Role Management & Authoritative RBAC | Completed |
-| **Phase 3** | Core Education Management & Course Administration | Next Up |
+| **Phase 3** | Core Education Management & Course Administration | Completed |
 | **Phase 4** | Generative AI, RAG & Document Intelligence | Planned |
 | **Phase 5** | Personalized Recommendations & Academic Analytics | Planned |
 | **Phase 6** | Collaboration, Notifications & Parent-Teacher Messaging | Planned |
@@ -89,8 +89,8 @@ This seeds the Phase 2 database and launches the FastAPI backend and React web c
 #### 1. Backend Server
 ```powershell
 cd backend
-py -3.13 scripts/seed_phase2.py
-py -3.13 main.py
+py -3.13 scripts/seed_phase3.py
+py -3.13 -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 - Swagger API Docs: [http://localhost:8000/docs](http://localhost:8000/docs)
 - Health Diagnostics: [http://localhost:8000/api/v1/health](http://localhost:8000/api/v1/health)
@@ -113,4 +113,4 @@ npx expo start
 cd backend
 py -3.13 -m pytest -v
 ```
-All 20 test suites pass with 100% test coverage for authentication, RBAC, and relationships.
+All 26 automated unit, RBAC, multi-tenant isolation, and academic test suites pass with 100% success.

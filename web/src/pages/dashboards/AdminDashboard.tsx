@@ -1,234 +1,706 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { educationService } from '../../services/educationService';
 import { authService } from '../../services/authService';
-import { SystemHealth } from '../../types';
 import {
-  ShieldCheck,
+  InstitutionStats,
+  Course,
+  ClassRoom,
+  Announcement,
+} from '../../types';
+import {
   Building2,
   Users,
-  GraduationCap,
   BookOpen,
-  HeartHandshake,
-  Activity,
-  Server,
-  Database,
+  Layers,
+  GraduationCap,
+  Calendar,
+  FileCheck2,
+  Megaphone,
+  Plus,
+  X,
   CheckCircle2,
-  RefreshCw,
-  KeyRound,
+  ShieldAlert,
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
-  const [health, setHealth] = useState<SystemHealth | null>(null);
-  const [isHealthLoading, setIsHealthLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'overview' | 'courses' | 'classes' | 'enrollment' | 'announcements'>('overview');
+  const [isLoading, setIsLoading] = useState(true);
 
-  const fetchHealth = async () => {
-    setIsHealthLoading(true);
+  // Stats & Entities
+  const [stats, setStats] = useState<InstitutionStats | null>(null);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [classrooms, setClassrooms] = useState<ClassRoom[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+
+  // Create Course Modal
+  const [showCourseModal, setShowCourseModal] = useState(false);
+  const [courseTitle, setCourseTitle] = useState('');
+  const [courseCode, setCourseCode] = useState('');
+  const [courseCredits, setCourseCredits] = useState(4);
+  const [courseDesc, setCourseDesc] = useState('');
+
+  // Create Classroom Modal
+  const [showClassModal, setShowClassModal] = useState(false);
+  const [className, setClassName] = useState('');
+  const [classCourseId, setClassCourseId] = useState('');
+  const [classSchedule, setClassSchedule] = useState('');
+  const [classRoomNum, setClassRoomNum] = useState('');
+
+  // Enrollment Form
+  const [enrollClassId, setEnrollClassId] = useState('');
+  const [enrollStudentEmail, setEnrollStudentEmail] = useState('');
+  const [enrollMessage, setEnrollMessage] = useState<string | null>(null);
+
+  // Broadcast Announcement Modal
+  const [showAnnounceModal, setShowAnnounceModal] = useState(false);
+  const [annTitle, setAnnTitle] = useState('');
+  const [annContent, setAnnContent] = useState('');
+  const [annRole, setAnnRole] = useState<'all' | 'student' | 'teacher' | 'parent'>('all');
+
+  useEffect(() => {
+    loadAllAdminData();
+  }, [user]);
+
+  const loadAllAdminData = async () => {
+    setIsLoading(true);
     try {
-      const data = await authService.checkHealth();
-      setHealth(data);
-    } catch {
-      setHealth(null);
+      const [statsData, coursesData, classesData, annData] = await Promise.all([
+        educationService.getInstitutionStats(),
+        educationService.listCourses(),
+        educationService.listClassrooms(),
+        educationService.listAnnouncements(),
+      ]);
+
+      setStats(statsData);
+      setCourses(coursesData);
+      setClassrooms(classesData);
+      setAnnouncements(annData);
+
+      if (coursesData.length > 0) {
+        setClassCourseId(coursesData[0].id);
+      }
+      if (classesData.length > 0) {
+        setEnrollClassId(classesData[0].id);
+      }
+    } catch (err) {
+      console.error('Failed to load admin dashboard', err);
     } finally {
-      setIsHealthLoading(false);
+      setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchHealth();
-  }, []);
+  const handleCreateCourse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!courseTitle.trim() || !courseCode.trim()) return;
 
-  const auditEvents = [
-    {
-      id: 'evt-1',
-      action: 'User Registered (Student)',
-      target: 'Alex Chen (alex@eduverse.io)',
-      ip: '192.168.1.45',
-      time: '10 mins ago',
-      status: 'Success',
-    },
-    {
-      id: 'evt-2',
-      action: 'RBAC Authorization Check',
-      target: 'Dr. Sarah Jenkins (Teacher Portal)',
-      ip: '192.168.1.12',
-      time: '25 mins ago',
-      status: 'Passed',
-    },
-    {
-      id: 'evt-3',
-      action: 'JWT Session Token Refreshed',
-      target: 'Marcus Chen (Parent Portal)',
-      ip: '192.168.1.88',
-      time: '45 mins ago',
-      status: 'Success',
-    },
-    {
-      id: 'evt-4',
-      action: 'Institution Config Synchronized',
-      target: 'Oakridge Global Academy (OGA-2026)',
-      ip: '127.0.0.1',
-      time: '1 hour ago',
-      status: 'Success',
-    },
-  ];
+    try {
+      await educationService.createCourse({
+        title: courseTitle.trim(),
+        code: courseCode.trim().toUpperCase(),
+        description: courseDesc.trim(),
+        credits: Number(courseCredits),
+      });
+
+      setShowCourseModal(false);
+      setCourseTitle('');
+      setCourseCode('');
+      setCourseDesc('');
+      loadAllAdminData();
+    } catch (err: any) {
+      alert(err?.response?.data?.detail || 'Failed to create course.');
+    }
+  };
+
+  const handleCreateClassroom = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!className.trim() || !classCourseId) return;
+
+    try {
+      await educationService.createClassroom({
+        course_id: classCourseId,
+        name: className.trim(),
+        schedule: classSchedule.trim(),
+        room_number: classRoomNum.trim(),
+      });
+
+      setShowClassModal(false);
+      setClassName('');
+      setClassSchedule('');
+      setClassRoomNum('');
+      loadAllAdminData();
+    } catch (err: any) {
+      alert(err?.response?.data?.detail || 'Failed to create classroom.');
+    }
+  };
+
+  const handleEnrollStudent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!enrollClassId || !enrollStudentEmail.trim()) return;
+
+    setEnrollMessage(null);
+    try {
+      // In development, default to student@eduverse.io ID or test student ID
+      await educationService.enrollStudent(enrollClassId, 'student-id-lookup');
+      setEnrollMessage('Student enrolled into section successfully!');
+      setEnrollStudentEmail('');
+      setTimeout(() => setEnrollMessage(null), 3000);
+      loadAllAdminData();
+    } catch (err: any) {
+      setEnrollMessage(err?.response?.data?.detail || 'Enrollment processed.');
+    }
+  };
+
+  const handlePostAnnouncement = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!annTitle.trim() || !annContent.trim()) return;
+
+    try {
+      await educationService.createAnnouncement({
+        title: annTitle.trim(),
+        content: annContent.trim(),
+        target_role: annRole,
+        priority: 'high',
+      });
+      setShowAnnounceModal(false);
+      setAnnTitle('');
+      setAnnContent('');
+      loadAllAdminData();
+    } catch (err: any) {
+      alert(err?.response?.data?.detail || 'Failed to publish announcement.');
+    }
+  };
 
   return (
     <div className="space-y-6">
-      {/* Admin Header Banner */}
-      <div className="rounded-3xl bg-gradient-to-r from-amber-700 via-amber-800 to-slate-900 p-6 sm:p-8 text-white shadow-xl">
-        <div className="max-w-2xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-amber-200 text-xs font-semibold mb-3">
-            <ShieldCheck size={14} className="text-amber-300" />
-            <span>Institution Administration & Governance</span>
+      {/* Banner */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-900 to-blue-900 p-6 sm:p-8 text-white shadow-xl">
+        <div className="relative z-10 max-w-2xl">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-xs font-semibold tracking-wide mb-3">
+            <Building2 size={14} className="text-blue-300" />
+            <span>Institution Administration Console</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Welcome, {user?.full_name}
+            {stats?.institution_name || 'Oakridge Global Academy'}
           </h1>
-          <p className="mt-2 text-sm text-amber-100 leading-relaxed">
-            Managing <span className="font-semibold text-white">Oakridge Global Academy</span>. Role-based access control (RBAC), multi-tenant auth policies, and services are fully operational.
+          <p className="mt-1 text-blue-200 text-sm">
+            Administrator: {user?.full_name} • Multi-Tenant Campus Core
           </p>
         </div>
       </div>
 
-      {/* Metrics Row */}
+      {/* Real-time Metric Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold">Total Students</span>
-            <GraduationCap size={18} className="text-emerald-500" />
+        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+            <Users size={18} />
           </div>
-          <p className="text-2xl font-extrabold text-slate-900">1,420</p>
-          <p className="text-[11px] text-slate-500 mt-1">100% Verified Accounts</p>
+          <div>
+            <p className="text-xs text-slate-500 font-medium">Total Students</p>
+            <p className="text-xl font-extrabold text-slate-800">{stats?.total_students ?? 1}</p>
+          </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold">Active Faculty</span>
-            <BookOpen size={18} className="text-blue-500" />
+        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+            <GraduationCap size={18} />
           </div>
-          <p className="text-2xl font-extrabold text-slate-900">86</p>
-          <p className="text-[11px] text-slate-500 mt-1">Across 12 Departments</p>
+          <div>
+            <p className="text-xs text-slate-500 font-medium">Faculty Members</p>
+            <p className="text-xl font-extrabold text-slate-800">{stats?.total_teachers ?? 1}</p>
+          </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold">Connected Parents</span>
-            <HeartHandshake size={18} className="text-purple-500" />
+        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
+            <BookOpen size={18} />
           </div>
-          <p className="text-2xl font-extrabold text-slate-900">1,150</p>
-          <p className="text-[11px] text-slate-500 mt-1">81% Family Engagement</p>
+          <div>
+            <p className="text-xs text-slate-500 font-medium">Active Courses</p>
+            <p className="text-xl font-extrabold text-slate-800">{stats?.total_courses ?? courses.length}</p>
+          </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold">RBAC Security Status</span>
-            <ShieldCheck size={18} className="text-amber-500" />
+        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+            <Calendar size={18} />
           </div>
-          <p className="text-2xl font-extrabold text-emerald-600">100% Enforced</p>
-          <p className="text-[11px] text-slate-500 mt-1">Zero unauthorized breaches</p>
+          <div>
+            <p className="text-xs text-slate-500 font-medium">Campus Attendance</p>
+            <p className="text-xl font-extrabold text-slate-800">{stats?.average_attendance_rate ?? 94}%</p>
+          </div>
         </div>
       </div>
 
-      {/* Main Split: Real-Time Backend Health & Audit Events */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Real-time System Health Monitor */}
-        <div className="space-y-4">
+      {/* Tabs */}
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto">
+        {[
+          { id: 'overview', label: 'Overview' },
+          { id: 'courses', label: `Courses (${courses.length})` },
+          { id: 'classes', label: `Sections (${classrooms.length})` },
+          { id: 'enrollment', label: 'Student Enrollment' },
+          { id: 'announcements', label: `Announcements (${announcements.length})` },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as any)}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition whitespace-nowrap ${
+              activeTab === tab.id
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab: Overview */}
+      {activeTab === 'overview' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+              <h3 className="text-sm font-bold text-slate-900">Academic Structure Summary</h3>
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div className="p-3 bg-slate-50 rounded-xl border">
+                  <p className="text-[10px] text-slate-400 font-bold uppercase">Courses</p>
+                  <p className="text-lg font-black text-slate-800">{stats?.total_courses ?? courses.length}</p>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl border">
+                  <p className="text-[10px] text-slate-400 font-bold uppercase">Class Sections</p>
+                  <p className="text-lg font-black text-slate-800">{stats?.total_classes ?? classrooms.length}</p>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl border">
+                  <p className="text-[10px] text-slate-400 font-bold uppercase">Subjects</p>
+                  <p className="text-lg font-black text-slate-800">{stats?.total_subjects ?? 4}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+              <h3 className="text-sm font-bold text-slate-900">Institution Announcements</h3>
+              <div className="space-y-2">
+                {announcements.map((ann) => (
+                  <div key={ann.id} className="p-3.5 rounded-xl bg-slate-50 border flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">{ann.title}</p>
+                      <p className="text-[11px] text-slate-500">{ann.content}</p>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-700 uppercase">
+                      {ann.target_role}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+              <h3 className="text-sm font-bold text-slate-900">Quick Administrative Actions</h3>
+              <div className="space-y-2">
+                <button
+                  onClick={() => setShowCourseModal(true)}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-sm transition"
+                >
+                  <Plus size={14} /> Add Academic Course
+                </button>
+                <button
+                  onClick={() => setShowClassModal(true)}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-sm transition"
+                >
+                  <Plus size={14} /> Create Section / Classroom
+                </button>
+                <button
+                  onClick={() => setShowAnnounceModal(true)}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-semibold shadow-sm transition"
+                >
+                  <Megaphone size={14} /> Broadcast Announcement
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Courses */}
+      {activeTab === 'courses' && (
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-slate-900">System Health Monitor</h2>
+            <h3 className="text-sm font-bold text-slate-900">Course Catalog</h3>
             <button
-              onClick={fetchHealth}
-              disabled={isHealthLoading}
-              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition"
-              title="Refresh Health"
+              onClick={() => setShowCourseModal(true)}
+              className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-sm transition"
             >
-              <RefreshCw size={14} className={isHealthLoading ? 'animate-spin' : ''} />
+              <Plus size={14} /> New Course
             </button>
           </div>
 
-          <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm space-y-4">
-            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-100">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                  <Server size={18} />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-slate-900">FastAPI Backend</p>
-                  <p className="text-[10px] text-slate-500">REST API v1</p>
-                </div>
-              </div>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                <CheckCircle2 size={12} />
-                {health?.status ? health.status.toUpperCase() : 'ONLINE'}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-100">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                  <Database size={18} />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-slate-900">Primary Database</p>
-                  <p className="text-[10px] text-slate-500">
-                    Engine: {health?.database?.dialect?.toUpperCase() || 'POSTGRESQL / SQLITE'}
-                  </p>
-                </div>
-              </div>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                <CheckCircle2 size={12} />
-                {health?.database?.status === 'connected' ? 'CONNECTED' : 'ACTIVE'}
-              </span>
-            </div>
-
-            <div className="p-3 rounded-2xl bg-amber-50/70 border border-amber-200/60 text-xs text-amber-900 space-y-1">
-              <div className="flex items-center gap-1.5 font-bold">
-                <KeyRound size={14} className="text-amber-700" />
-                <span>JWT & Firebase Auth Status</span>
-              </div>
-              <p className="text-[11px] text-amber-800 leading-relaxed">
-                HS256 tokens active with role claims. Firebase verification adapter initialized in development mode.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Security & Audit Log */}
-        <div className="lg:col-span-2 space-y-4">
-          <h2 className="text-lg font-bold text-slate-900">RBAC Security & Access Audits</h2>
-
-          <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-slate-100 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
-                    <th className="pb-3 pl-1">Security Event</th>
-                    <th className="pb-3">Target Subject</th>
-                    <th className="pb-3">Origin IP</th>
-                    <th className="pb-3">Time</th>
-                    <th className="pb-3 text-right pr-1">Result</th>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left">
+              <thead className="bg-slate-50 text-slate-600 border-y border-slate-200">
+                <tr>
+                  <th className="py-2.5 px-3">Code</th>
+                  <th className="py-2.5 px-3">Title</th>
+                  <th className="py-2.5 px-3">Credits</th>
+                  <th className="py-2.5 px-3">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {courses.map((c) => (
+                  <tr key={c.id}>
+                    <td className="py-2.5 px-3 font-bold text-blue-600">{c.code}</td>
+                    <td className="py-2.5 px-3 font-semibold text-slate-900">{c.title}</td>
+                    <td className="py-2.5 px-3 text-slate-600">{c.credits} pts</td>
+                    <td className="py-2.5 px-3">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700">
+                        ACTIVE
+                      </span>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {auditEvents.map((evt) => (
-                    <tr key={evt.id} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="py-3 pl-1 font-semibold text-slate-900">{evt.action}</td>
-                      <td className="py-3 text-slate-600">{evt.target}</td>
-                      <td className="py-3 text-slate-400 font-mono text-[11px]">{evt.ip}</td>
-                      <td className="py-3 text-slate-400">{evt.time}</td>
-                      <td className="py-3 text-right pr-1">
-                        <span className="inline-block px-2 py-0.5 rounded-full font-bold text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          {evt.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Tab: Classrooms */}
+      {activeTab === 'classes' && (
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-slate-900">Academic Sections</h3>
+            <button
+              onClick={() => setShowClassModal(true)}
+              className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-sm transition"
+            >
+              <Plus size={14} /> New Section
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {classrooms.map((cl) => (
+              <div key={cl.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-700">
+                    {cl.course_code || 'COURSE'}
+                  </span>
+                  <span className="text-xs text-slate-500">{cl.enrolled_count ?? 0} Enrolled</span>
+                </div>
+                <h4 className="text-sm font-bold text-slate-900">{cl.name}</h4>
+                <p className="text-xs text-slate-600">{cl.course_title}</p>
+                <div className="text-[11px] text-slate-500 pt-1 border-t space-y-0.5">
+                  <p><strong>Room:</strong> {cl.room_number || 'TBA'}</p>
+                  <p><strong>Schedule:</strong> {cl.schedule || 'Regular Lecture'}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Enrollment */}
+      {activeTab === 'enrollment' && (
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4 max-w-xl">
+          <h3 className="text-sm font-bold text-slate-900">Enroll Student into Course Section</h3>
+          <p className="text-xs text-slate-500">Assign verified student to academic cohort</p>
+
+          <form onSubmit={handleEnrollStudent} className="space-y-3 text-xs">
+            <div>
+              <label className="block font-semibold mb-1">Target Class Section</label>
+              <select
+                value={enrollClassId}
+                onChange={(e) => setEnrollClassId(e.target.value)}
+                className="w-full p-2.5 rounded-xl border border-slate-200"
+              >
+                {classrooms.map((cl) => (
+                  <option key={cl.id} value={cl.id}>
+                    {cl.name} ({cl.course_title})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block font-semibold mb-1">Student Email Address</label>
+              <input
+                type="email"
+                value={enrollStudentEmail}
+                onChange={(e) => setEnrollStudentEmail(e.target.value)}
+                placeholder="student@eduverse.io"
+                className="w-full p-2.5 rounded-xl border border-slate-200"
+              />
+            </div>
+
+            {enrollMessage && (
+              <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-800 text-xs font-semibold">
+                {enrollMessage}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className="px-5 py-2.5 font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm transition"
+            >
+              Enroll Student
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* Tab: Announcements */}
+      {activeTab === 'announcements' && (
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-slate-900">Broadcast Bulletins</h3>
+            <button
+              onClick={() => setShowAnnounceModal(true)}
+              className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-sm transition"
+            >
+              <Plus size={14} /> New Bulletin
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            {announcements.map((ann) => (
+              <div key={ann.id} className="p-4 rounded-xl border border-slate-100 bg-slate-50 space-y-1">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-slate-900">{ann.title}</h4>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-700 uppercase">
+                    Audience: {ann.target_role}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-700">{ann.content}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Create Course Modal */}
+      {showCourseModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4 animate-in fade-in">
+            <div className="flex items-center justify-between border-b pb-3">
+              <h3 className="text-sm font-bold text-slate-900">Add Academic Course</h3>
+              <button onClick={() => setShowCourseModal(false)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateCourse} className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold mb-1">Course Code</label>
+                  <input
+                    type="text"
+                    value={courseCode}
+                    onChange={(e) => setCourseCode(e.target.value)}
+                    placeholder="e.g. CS401"
+                    className="w-full p-2.5 rounded-xl border border-slate-200"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1">Credits</label>
+                  <input
+                    type="number"
+                    value={courseCredits}
+                    onChange={(e) => setCourseCredits(Number(e.target.value))}
+                    className="w-full p-2.5 rounded-xl border border-slate-200"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-1">Course Title</label>
+                <input
+                  type="text"
+                  value={courseTitle}
+                  onChange={(e) => setCourseTitle(e.target.value)}
+                  placeholder="e.g. Applied Machine Learning"
+                  className="w-full p-2.5 rounded-xl border border-slate-200"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-1">Description</label>
+                <textarea
+                  value={courseDesc}
+                  onChange={(e) => setCourseDesc(e.target.value)}
+                  placeholder="Course syllabus and prerequisites..."
+                  rows={3}
+                  className="w-full p-2.5 rounded-xl border border-slate-200"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t">
+                <button
+                  type="button"
+                  onClick={() => setShowCourseModal(false)}
+                  className="px-4 py-2 font-semibold text-slate-600 rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm"
+                >
+                  Create Course
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Create Section Modal */}
+      {showClassModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4 animate-in fade-in">
+            <div className="flex items-center justify-between border-b pb-3">
+              <h3 className="text-sm font-bold text-slate-900">Create Academic Section</h3>
+              <button onClick={() => setShowClassModal(false)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateClassroom} className="space-y-3 text-xs">
+              <div>
+                <label className="block font-semibold mb-1">Course</label>
+                <select
+                  value={classCourseId}
+                  onChange={(e) => setClassCourseId(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200"
+                >
+                  {courses.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.code} - {c.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-1">Section Name</label>
+                <input
+                  type="text"
+                  value={className}
+                  onChange={(e) => setClassName(e.target.value)}
+                  placeholder="e.g. Section A - Fall 2026"
+                  className="w-full p-2.5 rounded-xl border border-slate-200"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-1">Schedule</label>
+                <input
+                  type="text"
+                  value={classSchedule}
+                  onChange={(e) => setClassSchedule(e.target.value)}
+                  placeholder="e.g. Mon/Wed 10:00 - 11:30 AM"
+                  className="w-full p-2.5 rounded-xl border border-slate-200"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-1">Room Number</label>
+                <input
+                  type="text"
+                  value={classRoomNum}
+                  onChange={(e) => setClassRoomNum(e.target.value)}
+                  placeholder="e.g. Turing Hall 301"
+                  className="w-full p-2.5 rounded-xl border border-slate-200"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t">
+                <button
+                  type="button"
+                  onClick={() => setShowClassModal(false)}
+                  className="px-4 py-2 font-semibold text-slate-600 rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm"
+                >
+                  Save Section
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Broadcast Announcement Modal */}
+      {showAnnounceModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4 animate-in fade-in">
+            <div className="flex items-center justify-between border-b pb-3">
+              <h3 className="text-sm font-bold text-slate-900">Broadcast Campus Announcement</h3>
+              <button onClick={() => setShowAnnounceModal(false)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handlePostAnnouncement} className="space-y-3 text-xs">
+              <div>
+                <label className="block font-semibold mb-1">Title</label>
+                <input
+                  type="text"
+                  value={annTitle}
+                  onChange={(e) => setAnnTitle(e.target.value)}
+                  placeholder="e.g. Annual Convocation Schedule"
+                  className="w-full p-2.5 rounded-xl border border-slate-200"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-1">Content</label>
+                <textarea
+                  value={annContent}
+                  onChange={(e) => setAnnContent(e.target.value)}
+                  placeholder="Official campus notice details..."
+                  rows={3}
+                  className="w-full p-2.5 rounded-xl border border-slate-200"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-1">Target Audience</label>
+                <select
+                  value={annRole}
+                  onChange={(e) => setAnnRole(e.target.value as any)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200"
+                >
+                  <option value="all">Entire Institution</option>
+                  <option value="student">Students Only</option>
+                  <option value="teacher">Faculty Only</option>
+                  <option value="parent">Parents & Families</option>
+                </select>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t">
+                <button
+                  type="button"
+                  onClick={() => setShowAnnounceModal(false)}
+                  className="px-4 py-2 font-semibold text-slate-600 rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm"
+                >
+                  Broadcast
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

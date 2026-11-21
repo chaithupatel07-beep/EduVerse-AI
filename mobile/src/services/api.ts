@@ -23,6 +23,19 @@ export const mobileApi = axios.create({
   timeout: 10000,
 });
 
+let currentAuthToken: string | null = null;
+
+export const setAuthToken = (token: string | null) => {
+  currentAuthToken = token;
+  if (token) {
+    mobileApi.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  } else {
+    delete mobileApi.defaults.headers.common['Authorization'];
+  }
+};
+
+export const getAuthToken = () => currentAuthToken;
+
 export const checkBackendHealth = async () => {
   try {
     const res = await mobileApi.get('/health');

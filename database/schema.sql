@@ -150,3 +150,357 @@ CREATE TABLE IF NOT EXISTS parent_student_links (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT uq_parent_student UNIQUE (parent_id, student_id)
 );
+
+
+-- ==============================================================================
+-- Phase 3: Core Education Management Architecture
+-- Departments, Courses, Subjects, Classrooms, Enrollments, Study Materials,
+-- Assignments, Quizzes, Attendance, Analytics, and Communications
+-- ==============================================================================
+
+-- 9. Departments Table
+CREATE TABLE IF NOT EXISTS departments (
+    id VARCHAR(36) PRIMARY KEY,
+    institution_id VARCHAR(36) NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+    name VARCHAR(200) NOT NULL,
+    code VARCHAR(50) NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT uq_dept_inst_code UNIQUE (institution_id, code)
+);
+
+CREATE INDEX IF NOT EXISTS idx_departments_inst ON departments(institution_id);
+
+-- 10. Courses Table
+CREATE TABLE IF NOT EXISTS courses (
+    id VARCHAR(36) PRIMARY KEY,
+    institution_id VARCHAR(36) NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+    department_id VARCHAR(36) REFERENCES departments(id) ON DELETE SET NULL,
+    title VARCHAR(255) NOT NULL,
+    code VARCHAR(50) NOT NULL,
+    description TEXT,
+    credits INTEGER DEFAULT 3 NOT NULL,
+    syllabus TEXT,
+    cover_image_url VARCHAR(500),
+    is_active BOOLEAN DEFAULT TRUE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT uq_course_inst_code UNIQUE (institution_id, code)
+);
+
+CREATE INDEX IF NOT EXISTS idx_courses_inst ON courses(institution_id);
+CREATE INDEX IF NOT EXISTS idx_courses_dept ON courses(department_id);
+CREATE INDEX IF NOT EXISTS idx_courses_code ON courses(code);
+
+-- 11. Subjects Table
+CREATE TABLE IF NOT EXISTS subjects (
+    id VARCHAR(36) PRIMARY KEY,
+    course_id VARCHAR(36) NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    code VARCHAR(50) NOT NULL,
+    description TEXT,
+    order_index INTEGER DEFAULT 0 NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT uq_subject_course_code UNIQUE (course_id, code)
+);
+
+CREATE INDEX IF NOT EXISTS idx_subjects_course ON subjects(course_id);
+
+-- 12. Classrooms / Sections Table
+CREATE TABLE IF NOT EXISTS classrooms (
+    id VARCHAR(36) PRIMARY KEY,
+    institution_id VARCHAR(36) NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+    course_id VARCHAR(36) NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,
+    academic_year VARCHAR(50) DEFAULT '2026-2027' NOT NULL,
+    semester_term VARCHAR(50) DEFAULT 'Semester 1' NOT NULL,
+    room_number VARCHAR(50),
+    schedule VARCHAR(255),
+    is_active BOOLEAN DEFAULT TRUE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT uq_classroom_course_year UNIQUE (course_id, name, academic_year)
+);
+
+CREATE INDEX IF NOT EXISTS idx_classrooms_inst ON classrooms(institution_id);
+CREATE INDEX IF NOT EXISTS idx_classrooms_course ON classrooms(course_id);
+
+-- 13. Class Enrollments Table
+CREATE TABLE IF NOT EXISTS class_enrollments (
+    id VARCHAR(36) PRIMARY KEY,
+    class_id VARCHAR(36) NOT NULL REFERENCES classrooms(id) ON DELETE CASCADE,
+    student_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status VARCHAR(50) DEFAULT 'enrolled' NOT NULL,
+    enrollment_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT uq_class_student_enrollment UNIQUE (class_id, student_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_enrollments_class ON class_enrollments(class_id);
+CREATE INDEX IF NOT EXISTS idx_enrollments_student ON class_enrollments(student_id);
+
+-- 14. Teacher Assignments Table
+CREATE TABLE IF NOT EXISTS teacher_assignments (
+    id VARCHAR(36) PRIMARY KEY,
+    class_id VARCHAR(36) NOT NULL REFERENCES classrooms(id) ON DELETE CASCADE,
+    subject_id VARCHAR(36) REFERENCES subjects(id) ON DELETE CASCADE,
+    teacher_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role_type VARCHAR(50) DEFAULT 'primary' NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT uq_teacher_class_subject UNIQUE (class_id, teacher_id, subject_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_teacher_assign_class ON teacher_assignments(class_id);
+CREATE INDEX IF NOT EXISTS idx_teacher_assign_teacher ON teacher_assignments(teacher_id);
+
+-- 15. Study Materials Table
+CREATE TABLE IF NOT EXISTS study_materials (
+    id VARCHAR(36) PRIMARY KEY,
+    institution_id VARCHAR(36) NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+    course_id VARCHAR(36) NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    subject_id VARCHAR(36) REFERENCES subjects(id) ON DELETE SET NULL,
+    uploaded_by VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    file_name VARCHAR(255) NOT NULL,
+    original_file_name VARCHAR(255) NOT NULL,
+    file_path VARCHAR(500) NOT NULL,
+    file_size INTEGER DEFAULT 0 NOT NULL,
+    mime_type VARCHAR(100) DEFAULT 'application/pdf' NOT NULL,
+    file_type VARCHAR(50) DEFAULT 'pdf' NOT NULL,
+    download_count INTEGER DEFAULT 0 NOT NULL,
+    is_published BOOLEAN DEFAULT TRUE NOT NULL,
+    rag_indexed BOOLEAN DEFAULT FALSE NOT NULL,
+    rag_chunks_count INTEGER DEFAULT 0 NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_materials_inst ON study_materials(institution_id);
+CREATE INDEX IF NOT EXISTS idx_materials_course ON study_materials(course_id);
+CREATE INDEX IF NOT EXISTS idx_materials_uploader ON study_materials(uploaded_by);
+
+-- 16. Assignments Table
+CREATE TABLE IF NOT EXISTS assignments (
+    id VARCHAR(36) PRIMARY KEY,
+    institution_id VARCHAR(36) NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+    class_id VARCHAR(36) NOT NULL REFERENCES classrooms(id) ON DELETE CASCADE,
+    subject_id VARCHAR(36) REFERENCES subjects(id) ON DELETE SET NULL,
+    teacher_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    instructions TEXT,
+    max_marks FLOAT DEFAULT 100.0 NOT NULL,
+    due_date TIMESTAMP WITH TIME ZONE NOT NULL,
+    allowed_formats VARCHAR(255) DEFAULT 'pdf,docx,zip,txt' NOT NULL,
+    attachment_url VARCHAR(500),
+    status VARCHAR(50) DEFAULT 'published' NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_assignments_inst ON assignments(institution_id);
+CREATE INDEX IF NOT EXISTS idx_assignments_class ON assignments(class_id);
+CREATE INDEX IF NOT EXISTS idx_assignments_teacher ON assignments(teacher_id);
+
+-- 17. Assignment Submissions Table
+CREATE TABLE IF NOT EXISTS assignment_submissions (
+    id VARCHAR(36) PRIMARY KEY,
+    assignment_id VARCHAR(36) NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
+    student_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    submission_text TEXT,
+    file_path VARCHAR(500),
+    file_name VARCHAR(255),
+    file_size INTEGER DEFAULT 0 NOT NULL,
+    mime_type VARCHAR(100),
+    status VARCHAR(50) DEFAULT 'submitted' NOT NULL,
+    submitted_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    marks_obtained FLOAT,
+    feedback TEXT,
+    evaluated_by VARCHAR(36) REFERENCES users(id) ON DELETE SET NULL,
+    evaluated_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT uq_assignment_student_submission UNIQUE (assignment_id, student_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_submissions_assign ON assignment_submissions(assignment_id);
+CREATE INDEX IF NOT EXISTS idx_submissions_student ON assignment_submissions(student_id);
+
+-- 18. Quizzes Table
+CREATE TABLE IF NOT EXISTS quizzes (
+    id VARCHAR(36) PRIMARY KEY,
+    institution_id VARCHAR(36) NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+    class_id VARCHAR(36) NOT NULL REFERENCES classrooms(id) ON DELETE CASCADE,
+    subject_id VARCHAR(36) REFERENCES subjects(id) ON DELETE SET NULL,
+    teacher_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    instructions TEXT,
+    duration_minutes INTEGER DEFAULT 30 NOT NULL,
+    total_marks FLOAT DEFAULT 100.0 NOT NULL,
+    passing_marks FLOAT DEFAULT 40.0 NOT NULL,
+    start_time TIMESTAMP WITH TIME ZONE,
+    end_time TIMESTAMP WITH TIME ZONE,
+    is_published BOOLEAN DEFAULT TRUE NOT NULL,
+    results_released BOOLEAN DEFAULT TRUE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_quizzes_inst ON quizzes(institution_id);
+CREATE INDEX IF NOT EXISTS idx_quizzes_class ON quizzes(class_id);
+
+-- 19. Quiz Questions Table
+CREATE TABLE IF NOT EXISTS quiz_questions (
+    id VARCHAR(36) PRIMARY KEY,
+    quiz_id VARCHAR(36) NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
+    question_text TEXT NOT NULL,
+    question_type VARCHAR(50) DEFAULT 'mcq' NOT NULL,
+    points FLOAT DEFAULT 10.0 NOT NULL,
+    order_index INTEGER DEFAULT 0 NOT NULL,
+    explanation TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_quiz_questions_quiz ON quiz_questions(quiz_id);
+
+-- 20. Quiz Options Table
+CREATE TABLE IF NOT EXISTS quiz_options (
+    id VARCHAR(36) PRIMARY KEY,
+    question_id VARCHAR(36) NOT NULL REFERENCES quiz_questions(id) ON DELETE CASCADE,
+    option_text TEXT NOT NULL,
+    is_correct BOOLEAN DEFAULT FALSE NOT NULL,
+    order_index INTEGER DEFAULT 0 NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_quiz_options_question ON quiz_options(question_id);
+
+-- 21. Quiz Attempts Table
+CREATE TABLE IF NOT EXISTS quiz_attempts (
+    id VARCHAR(36) PRIMARY KEY,
+    quiz_id VARCHAR(36) NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
+    student_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status VARCHAR(50) DEFAULT 'completed' NOT NULL,
+    score FLOAT DEFAULT 0.0 NOT NULL,
+    percentage FLOAT DEFAULT 0.0 NOT NULL,
+    passed BOOLEAN DEFAULT FALSE NOT NULL,
+    started_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    submitted_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_quiz_attempts_quiz ON quiz_attempts(quiz_id);
+CREATE INDEX IF NOT EXISTS idx_quiz_attempts_student ON quiz_attempts(student_id);
+
+-- 22. Quiz Answers Table
+CREATE TABLE IF NOT EXISTS quiz_answers (
+    id VARCHAR(36) PRIMARY KEY,
+    attempt_id VARCHAR(36) NOT NULL REFERENCES quiz_attempts(id) ON DELETE CASCADE,
+    question_id VARCHAR(36) NOT NULL REFERENCES quiz_questions(id) ON DELETE CASCADE,
+    selected_option_id VARCHAR(36),
+    selected_option_ids TEXT,
+    text_answer TEXT,
+    is_correct BOOLEAN DEFAULT FALSE NOT NULL,
+    marks_awarded FLOAT DEFAULT 0.0 NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_quiz_answers_attempt ON quiz_answers(attempt_id);
+
+-- 23. Attendance Sessions Table
+CREATE TABLE IF NOT EXISTS attendance_sessions (
+    id VARCHAR(36) PRIMARY KEY,
+    institution_id VARCHAR(36) NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+    class_id VARCHAR(36) NOT NULL REFERENCES classrooms(id) ON DELETE CASCADE,
+    subject_id VARCHAR(36) REFERENCES subjects(id) ON DELETE SET NULL,
+    teacher_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    session_date DATE NOT NULL,
+    session_title VARCHAR(200) DEFAULT 'Regular Lecture' NOT NULL,
+    session_notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT uq_class_session_date_subject UNIQUE (class_id, session_date, subject_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_attendance_sessions_class ON attendance_sessions(class_id);
+CREATE INDEX IF NOT EXISTS idx_attendance_sessions_date ON attendance_sessions(session_date);
+
+-- 24. Attendance Records Table
+CREATE TABLE IF NOT EXISTS attendance_records (
+    id VARCHAR(36) PRIMARY KEY,
+    session_id VARCHAR(36) NOT NULL REFERENCES attendance_sessions(id) ON DELETE CASCADE,
+    student_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status VARCHAR(50) DEFAULT 'present' NOT NULL,
+    remarks VARCHAR(255),
+    recorded_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT uq_session_student_attendance UNIQUE (session_id, student_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_attendance_records_session ON attendance_records(session_id);
+CREATE INDEX IF NOT EXISTS idx_attendance_records_student ON attendance_records(student_id);
+
+-- 25. Attendance Audit Logs Table
+CREATE TABLE IF NOT EXISTS attendance_audit_logs (
+    id VARCHAR(36) PRIMARY KEY,
+    record_id VARCHAR(36) NOT NULL REFERENCES attendance_records(id) ON DELETE CASCADE,
+    changed_by VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    old_status VARCHAR(50) NOT NULL,
+    new_status VARCHAR(50) NOT NULL,
+    reason VARCHAR(255),
+    changed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+-- 26. Announcements Table
+CREATE TABLE IF NOT EXISTS announcements (
+    id VARCHAR(36) PRIMARY KEY,
+    institution_id VARCHAR(36) NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+    author_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    content TEXT NOT NULL,
+    target_role VARCHAR(50) DEFAULT 'all' NOT NULL,
+    priority VARCHAR(50) DEFAULT 'normal' NOT NULL,
+    is_published BOOLEAN DEFAULT TRUE NOT NULL,
+    attachment_url VARCHAR(500),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_announcements_inst ON announcements(institution_id);
+
+-- 27. Notifications Table
+CREATE TABLE IF NOT EXISTS notifications (
+    id VARCHAR(36) PRIMARY KEY,
+    user_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    notification_type VARCHAR(50) DEFAULT 'general' NOT NULL,
+    link_url VARCHAR(255),
+    is_read BOOLEAN DEFAULT FALSE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(is_read);
+
+-- 28. Communication Requests Table
+CREATE TABLE IF NOT EXISTS communication_requests (
+    id VARCHAR(36) PRIMARY KEY,
+    parent_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    teacher_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    student_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    subject VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    status VARCHAR(50) DEFAULT 'pending' NOT NULL,
+    response_notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_comm_requests_parent ON communication_requests(parent_id);
+CREATE INDEX IF NOT EXISTS idx_comm_requests_teacher ON communication_requests(teacher_id);

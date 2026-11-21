@@ -64,3 +64,55 @@ async def client(db_session: AsyncSession):
         yield ac
 
     app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture(scope="function")
+async def admin_headers(client: AsyncClient):
+    res = await client.post(
+        "/api/v1/auth/register-profile",
+        json={
+            "email": "conftest.admin@eduverse.io",
+            "password": "Password123!",
+            "full_name": "Conftest Admin",
+            "role": "admin",
+            "institution_code": "OGA-2026",
+            "invitation_code": "EDUVERSE-ADMIN-2026",
+        },
+    )
+    token = res.json()["data"]["tokens"]["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest_asyncio.fixture(scope="function")
+async def teacher_headers(client: AsyncClient):
+    res = await client.post(
+        "/api/v1/auth/register-profile",
+        json={
+            "email": "conftest.teacher@eduverse.io",
+            "password": "Password123!",
+            "full_name": "Conftest Teacher",
+            "role": "teacher",
+            "institution_code": "OGA-2026",
+            "department": "Computer Science",
+            "designation": "Professor",
+        },
+    )
+    token = res.json()["data"]["tokens"]["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest_asyncio.fixture(scope="function")
+async def student_headers(client: AsyncClient):
+    res = await client.post(
+        "/api/v1/auth/register-profile",
+        json={
+            "email": "conftest.student@eduverse.io",
+            "password": "Password123!",
+            "full_name": "Conftest Student",
+            "role": "student",
+            "institution_code": "OGA-2026",
+            "grade_level": "Semester 5",
+        },
+    )
+    token = res.json()["data"]["tokens"]["access_token"]
+    return {"Authorization": f"Bearer {token}"}

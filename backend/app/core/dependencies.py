@@ -114,3 +114,7 @@ require_student = require_role(UserRole.STUDENT, UserRole.ADMIN)
 require_teacher = require_role(UserRole.TEACHER, UserRole.ADMIN)
 require_parent = require_role(UserRole.PARENT, UserRole.ADMIN)
 require_admin = require_role(UserRole.ADMIN)
+
+require_teacher_or_admin = require_role(UserRole.TEACHER, UserRole.ADMIN)
+require_student_or_admin = require_role(UserRole.STUDENT, UserRole.ADMIN)
+require_parent_or_admin = require_role(UserRole.PARENT, UserRole.ADMIN)

@@ -8,6 +8,19 @@ from app.models.profiles import (
     InstitutionMembership,
     ParentStudentRelationship,
 )
+from app.models.academic import (
+    Department,
+    Course,
+    Subject,
+    ClassRoom,
+    ClassEnrollment,
+    TeacherAssignment,
+)
+from app.models.material import StudyMaterial
+from app.models.assignment import Assignment, AssignmentSubmission
+from app.models.quiz import Quiz, QuizQuestion, QuizOption, QuizAttempt, QuizAnswer
+from app.models.attendance import AttendanceSession, AttendanceRecord, AttendanceAuditLog
+from app.models.communication import Announcement, Notification, CommunicationRequest
 
 __all__ = [
     "Base",
@@ -22,4 +35,24 @@ __all__ = [
     "ParentProfile",
     "InstitutionMembership",
     "ParentStudentRelationship",
+    "Department",
+    "Course",
+    "Subject",
+    "ClassRoom",
+    "ClassEnrollment",
+    "TeacherAssignment",
+    "StudyMaterial",
+    "Assignment",
+    "AssignmentSubmission",
+    "Quiz",
+    "QuizQuestion",
+    "QuizOption",
+    "QuizAttempt",
+    "QuizAnswer",
+    "AttendanceSession",
+    "AttendanceRecord",
+    "AttendanceAuditLog",
+    "Announcement",
+    "Notification",
+    "CommunicationRequest",
 ]
