@@ -109,6 +109,10 @@ def require_role(*allowed_roles: UserRole):
     return role_checker
 
 
+def require_roles(allowed_roles: List[UserRole]):
+    return require_role(*allowed_roles)
+
+
 # Role-specific dependency instances
 require_student = require_role(UserRole.STUDENT, UserRole.ADMIN)
 require_teacher = require_role(UserRole.TEACHER, UserRole.ADMIN)

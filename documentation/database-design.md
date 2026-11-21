@@ -262,3 +262,12 @@ erDiagram
 19. `notifications`: In-app notification queue with read state tracking.
 20. `communication_requests`: Structured parent-teacher consultation requests with response notes.
 
+## Phase 4 Generative AI & Multilingual RAG Additions (Tables 29 to 34)
+21. `ai_conversations`: Tracks conversation state per user and agent persona (`student_rag`, `parent_telemetry`, `educator_copilot`).
+22. `ai_messages`: Stores chat messages, role (`user`, `assistant`, `system`), language tag (`en`, `te`, `hi`), and metadata JSON (citations and telemetry source tracking).
+23. `document_chunks`: Stores text chunks extracted from study materials, character offsets, token counts, and ChromaDB vector reference IDs.
+24. `user_language_preferences`: Stores individual user language settings (`en`, `te`, `hi`) for interface localization and multilingual AI prompt generation.
+25. `communication_threads`: High-priority parent-teacher-management communication threads with categories (`academic_concerns`, `attendance_issues`, etc.) and resolution statuses.
+26. `communication_messages`: Message timeline for communication threads with original language tags and sender role metadata.
+
+

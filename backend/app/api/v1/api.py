@@ -11,6 +11,9 @@ from app.api.v1.quizzes import router as quizzes_router
 from app.api.v1.attendance import router as attendance_router
 from app.api.v1.progress import router as progress_router
 from app.api.v1.announcements import router as announcements_router
+from app.api.v1.ai import router as ai_router
+from app.api.v1.parent_ai import router as parent_ai_router
+from app.api.v1.communication import router as communication_router
 
 api_router = APIRouter()
 
@@ -26,3 +29,6 @@ api_router.include_router(quizzes_router)
 api_router.include_router(attendance_router)
 api_router.include_router(progress_router)
 api_router.include_router(announcements_router)
+api_router.include_router(ai_router)
+api_router.include_router(parent_ai_router)
+api_router.include_router(communication_router)

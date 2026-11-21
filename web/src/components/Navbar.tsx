@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { RoleBadge } from './RoleBadge';
 import { QuickRoleSwitcher } from './QuickRoleSwitcher';
+import { LanguageSelector } from './LanguageSelector';
 import { educationService } from '../services/educationService';
 import { NotificationItem } from '../types';
 import {
@@ -100,6 +101,9 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate, onToggl
               <>
                 {/* Instant Role Switcher */}
                 <QuickRoleSwitcher onRoleSwitched={() => onNavigate('dashboard')} />
+
+                {/* Multilingual Selector */}
+                <LanguageSelector />
 
                 {/* Notifications Bell */}
                 <div className="relative">
@@ -239,6 +243,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate, onToggl
               </>
             ) : (
               <div className="flex items-center gap-2">
+                <LanguageSelector />
                 <button
                   onClick={() => onNavigate('login')}
                   className={`text-xs font-semibold px-3.5 py-2 rounded-xl transition ${

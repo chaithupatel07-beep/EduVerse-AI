@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { educationService } from '../../services/educationService';
 import { authService } from '../../services/authService';
+import { aiService } from '../../services/aiService';
 import {
   InstitutionStats,
   Course,
   ClassRoom,
   Announcement,
+  StudyMaterial,
 } from '../../types';
 import {
   Building2,
@@ -21,12 +23,20 @@ import {
   X,
   CheckCircle2,
   ShieldAlert,
+  Database,
+  Sparkles,
+  RefreshCw,
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'courses' | 'classes' | 'enrollment' | 'announcements'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'courses' | 'classes' | 'enrollment' | 'announcements' | 'rag_management'>('overview');
   const [isLoading, setIsLoading] = useState(true);
+
+  // RAG Indexing States
+  const [adminMaterials, setAdminMaterials] = useState<StudyMaterial[]>([]);
+  const [indexingId, setIndexingId] = useState<string | null>(null);
+  const [indexedResultMap, setIndexedResultMap] = useState<Record<string, string>>({});
 
   // Stats & Entities
   const [stats, setStats] = useState<InstitutionStats | null>(null);
@@ -66,17 +76,19 @@ export const AdminDashboard: React.FC = () => {
   const loadAllAdminData = async () => {
     setIsLoading(true);
     try {
-      const [statsData, coursesData, classesData, annData] = await Promise.all([
+      const [statsData, coursesData, classesData, annData, matsData] = await Promise.all([
         educationService.getInstitutionStats(),
         educationService.listCourses(),
         educationService.listClassrooms(),
         educationService.listAnnouncements(),
+        educationService.listMaterials().catch(() => []),
       ]);
 
       setStats(statsData);
       setCourses(coursesData);
       setClassrooms(classesData);
       setAnnouncements(annData);
+      setAdminMaterials(matsData || []);
 
       if (coursesData.length > 0) {
         setClassCourseId(coursesData[0].id);
@@ -88,6 +100,21 @@ export const AdminDashboard: React.FC = () => {
       console.error('Failed to load admin dashboard', err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleIndexToChroma = async (materialId: string) => {
+    setIndexingId(materialId);
+    try {
+      const res = await aiService.indexDocument(materialId);
+      setIndexedResultMap((prev) => ({
+        ...prev,
+        [materialId]: `Indexed: ${res.chunks_created} chunks (${res.total_tokens} tokens) in ${res.chroma_collection}`,
+      }));
+    } catch (err: any) {
+      alert(err?.response?.data?.detail || 'Failed to index document.');
+    } finally {
+      setIndexingId(null);
     }
   };
 
@@ -237,6 +264,7 @@ export const AdminDashboard: React.FC = () => {
       <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto">
         {[
           { id: 'overview', label: 'Overview' },
+          { id: 'rag_management', label: 'RAG Vector Indexing (ChromaDB)' },
           { id: 'courses', label: `Courses (${courses.length})` },
           { id: 'classes', label: `Sections (${classrooms.length})` },
           { id: 'enrollment', label: 'Student Enrollment' },
@@ -320,6 +348,81 @@ export const AdminDashboard: React.FC = () => {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab: RAG Vector Indexing */}
+      {activeTab === 'rag_management' && (
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <Database size={17} className="text-indigo-600" />
+                <span>ChromaDB Vector Store & RAG Knowledge Base</span>
+              </h3>
+              <p className="text-xs text-slate-500">
+                Index institutional syllabus, course notes, and textbooks into ChromaDB embeddings for AI RAG answers.
+              </p>
+            </div>
+            <span className="text-xs font-bold px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full border border-indigo-100">
+              Active Collection: eduverse_academic_materials
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left">
+              <thead className="bg-slate-50 text-slate-600 border-y border-slate-200">
+                <tr>
+                  <th className="py-2.5 px-3">Document Title</th>
+                  <th className="py-2.5 px-3">Type</th>
+                  <th className="py-2.5 px-3">Indexed Vector Status</th>
+                  <th className="py-2.5 px-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {adminMaterials.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="py-6 text-center text-slate-400 italic">
+                      No study materials found in this institution.
+                    </td>
+                  </tr>
+                ) : (
+                  adminMaterials.map((mat) => (
+                    <tr key={mat.id}>
+                      <td className="py-3 px-3 font-semibold text-slate-800">
+                        <p>{mat.title}</p>
+                        <p className="text-[10px] text-slate-400 font-normal">{mat.description || 'Syllabus reference'}</p>
+                      </td>
+                      <td className="py-3 px-3 uppercase text-[10px] font-bold text-slate-500">
+                        {mat.file_type || 'DOCUMENT'}
+                      </td>
+                      <td className="py-3 px-3">
+                        {indexedResultMap[mat.id] ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1 w-fit">
+                            <CheckCircle2 size={11} /> {indexedResultMap[mat.id]}
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-600">
+                            Ready for indexing
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-3">
+                        <button
+                          onClick={() => handleIndexToChroma(mat.id)}
+                          disabled={indexingId === mat.id}
+                          className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs transition flex items-center gap-1"
+                        >
+                          <Sparkles size={12} />
+                          <span>{indexingId === mat.id ? 'Chunking & Embedding...' : 'Index in ChromaDB'}</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

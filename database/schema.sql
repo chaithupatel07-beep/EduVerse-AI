@@ -504,3 +504,101 @@ CREATE TABLE IF NOT EXISTS communication_requests (
 
 CREATE INDEX IF NOT EXISTS idx_comm_requests_parent ON communication_requests(parent_id);
 CREATE INDEX IF NOT EXISTS idx_comm_requests_teacher ON communication_requests(teacher_id);
+
+-- ==============================================================================
+-- Phase 4: Generative AI, RAG Vector Knowledge Base, and Multilingual Communication
+-- ==============================================================================
+
+-- 29. AI Conversations Table
+CREATE TABLE IF NOT EXISTS ai_conversations (
+    id VARCHAR(36) PRIMARY KEY,
+    user_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    institution_id VARCHAR(36) NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+    conversation_type VARCHAR(50) DEFAULT 'student_assistant' NOT NULL, -- 'student_assistant', 'parent_assistant', 'teacher_tool'
+    student_id VARCHAR(36) REFERENCES users(id) ON DELETE SET NULL,
+    course_id VARCHAR(36) REFERENCES courses(id) ON DELETE SET NULL,
+    subject_id VARCHAR(36) REFERENCES subjects(id) ON DELETE SET NULL,
+    title VARCHAR(255) DEFAULT 'New Conversation' NOT NULL,
+    language VARCHAR(10) DEFAULT 'en' NOT NULL, -- 'en', 'te', 'hi'
+    is_active BOOLEAN DEFAULT TRUE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_conv_user ON ai_conversations(user_id);
+CREATE INDEX IF NOT EXISTS idx_ai_conv_type ON ai_conversations(user_id, conversation_type);
+
+-- 30. AI Messages Table
+CREATE TABLE IF NOT EXISTS ai_messages (
+    id VARCHAR(36) PRIMARY KEY,
+    conversation_id VARCHAR(36) NOT NULL REFERENCES ai_conversations(id) ON DELETE CASCADE,
+    sender VARCHAR(20) NOT NULL, -- 'user', 'assistant', 'system'
+    content TEXT NOT NULL,
+    language VARCHAR(10) DEFAULT 'en' NOT NULL,
+    sources JSONB,
+    metadata_json JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_msg_conv ON ai_messages(conversation_id);
+
+-- 31. Document Chunks Table (RAG Metadata)
+CREATE TABLE IF NOT EXISTS document_chunks (
+    id VARCHAR(36) PRIMARY KEY,
+    material_id VARCHAR(36) NOT NULL REFERENCES study_materials(id) ON DELETE CASCADE,
+    institution_id VARCHAR(36) NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+    course_id VARCHAR(36) NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    subject_id VARCHAR(36) REFERENCES subjects(id) ON DELETE SET NULL,
+    chunk_index INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    page_number INTEGER,
+    token_count INTEGER DEFAULT 0 NOT NULL,
+    chroma_id VARCHAR(100),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_doc_chunk_mat ON document_chunks(material_id, chunk_index);
+CREATE INDEX IF NOT EXISTS idx_doc_chunk_inst ON document_chunks(institution_id);
+
+-- 32. User Language Preferences Table
+CREATE TABLE IF NOT EXISTS user_language_preferences (
+    user_id VARCHAR(36) PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    preferred_language VARCHAR(10) DEFAULT 'en' NOT NULL, -- 'en', 'te', 'hi'
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+-- 33. Communication Threads Table (Parent-Teacher-Management Hub)
+CREATE TABLE IF NOT EXISTS communication_threads (
+    id VARCHAR(36) PRIMARY KEY,
+    institution_id VARCHAR(36) NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+    thread_type VARCHAR(50) DEFAULT 'parent_teacher' NOT NULL, -- 'parent_teacher', 'parent_management'
+    category VARCHAR(50) DEFAULT 'academic_concerns' NOT NULL, -- 'academic_concerns', 'attendance_issues', 'assignment_queries', etc.
+    parent_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    student_id VARCHAR(36) REFERENCES users(id) ON DELETE SET NULL,
+    recipient_id VARCHAR(36) REFERENCES users(id) ON DELETE SET NULL,
+    subject VARCHAR(255) NOT NULL,
+    status VARCHAR(50) DEFAULT 'pending' NOT NULL, -- 'pending', 'in_review', 'resolved', 'closed'
+    priority VARCHAR(20) DEFAULT 'normal' NOT NULL, -- 'low', 'normal', 'high', 'urgent'
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_comm_thread_parent ON communication_threads(parent_id, thread_type);
+CREATE INDEX IF NOT EXISTS idx_comm_thread_status ON communication_threads(institution_id, status);
+
+-- 34. Communication Messages Table
+CREATE TABLE IF NOT EXISTS communication_messages (
+    id VARCHAR(36) PRIMARY KEY,
+    thread_id VARCHAR(36) NOT NULL REFERENCES communication_threads(id) ON DELETE CASCADE,
+    sender_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    sender_role VARCHAR(20) NOT NULL,
+    content TEXT NOT NULL,
+    original_language VARCHAR(10) DEFAULT 'en' NOT NULL,
+    translated_content TEXT,
+    target_language VARCHAR(10),
+    is_read BOOLEAN DEFAULT FALSE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_comm_msg_thread ON communication_messages(thread_id);
+

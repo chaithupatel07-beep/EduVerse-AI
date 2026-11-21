@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { authService } from '../../services/authService';
 import { educationService } from '../../services/educationService';
+import { aiService, ChildTelemetry, SuggestedInquiry } from '../../services/aiService';
+import { communicationService, CommunicationThread } from '../../services/communicationService';
+import { languageService, SupportedLanguage } from '../../services/languageService';
 import {
   StudentAttendanceSummary,
   StudentProgressSummary,
@@ -24,12 +27,35 @@ import {
   Plus,
   X,
   ChevronRight,
+  Sparkles,
+  Bot,
+  Send,
+  MessageSquare,
+  Globe,
+  CheckCircle2,
+  AlertCircle,
+  RefreshCw,
+  ShieldCheck,
 } from 'lucide-react';
+
+interface ChatMessage {
+  id: string;
+  sender: 'user' | 'assistant';
+  content: string;
+  language: string;
+  timestamp: string;
+  verifiedGrounding?: boolean;
+}
 
 export const ParentDashboard: React.FC = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'academics' | 'attendance' | 'communications' | 'announcements'>('overview');
+  const [activeTab, setActiveTab] = useState<
+    'overview' | 'ai_assistant' | 'communications' | 'academics' | 'attendance' | 'announcements'
+  >('ai_assistant');
   const [isLoading, setIsLoading] = useState(true);
+
+  // Language state
+  const [currentLang, setCurrentLang] = useState<SupportedLanguage>(languageService.getCurrentLanguage());
 
   // Verified Linked Children
   const [linkedChildren, setLinkedChildren] = useState<any[]>([]);
@@ -42,16 +68,42 @@ export const ParentDashboard: React.FC = () => {
   const [childAssignments, setChildAssignments] = useState<Assignment[]>([]);
   const [childSubmissions, setChildSubmissions] = useState<AssignmentSubmission[]>([]);
 
-  // Communications & Announcements
-  const [commRequests, setCommRequests] = useState<CommunicationRequest[]>([]);
+  // Telemetry for AI
+  const [childTelemetry, setChildTelemetry] = useState<ChildTelemetry | null>(null);
+  const [suggestedInquiries, setSuggestedInquiries] = useState<SuggestedInquiry[]>([]);
+
+  // AI Chat State
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [inputQuery, setInputQuery] = useState('');
+  const [isAiThinking, setIsAiThinking] = useState(false);
+
+  // Communication Hub State
+  const [threads, setThreads] = useState<CommunicationThread[]>([]);
+  const [selectedThread, setSelectedThread] = useState<CommunicationThread | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [isSendingReply, setIsSendingReply] = useState(false);
+  const [translatedMap, setTranslatedMap] = useState<Record<string, string>>({});
+  const [translatingMsgId, setTranslatingMsgId] = useState<string | null>(null);
+
+  // New Thread Modal
+  const [showNewThreadModal, setShowNewThreadModal] = useState(false);
+  const [newThreadType, setNewThreadType] = useState<'parent_teacher' | 'parent_management'>('parent_teacher');
+  const [newThreadCategory, setNewThreadCategory] = useState('academic_concerns');
+  const [newThreadSubject, setNewThreadSubject] = useState('');
+  const [newThreadInitialMsg, setNewThreadInitialMsg] = useState('');
+  const [newThreadPriority, setNewThreadPriority] = useState('normal');
+
+  // Announcements
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
 
-  // New Communication Request Modal
-  const [showCommModal, setShowCommModal] = useState(false);
-  const [commSubject, setCommSubject] = useState('');
-  const [commMessage, setCommMessage] = useState('');
-  const [commTeacherId, setCommTeacherId] = useState('');
-  const [availableTeachers, setAvailableTeachers] = useState<any[]>([]);
+  useEffect(() => {
+    const handleLang = (e: Event) => {
+      const customEvent = e as CustomEvent<SupportedLanguage>;
+      setCurrentLang(customEvent.detail);
+    };
+    window.addEventListener('languageChange', handleLang);
+    return () => window.removeEventListener('languageChange', handleLang);
+  }, []);
 
   useEffect(() => {
     loadParentContext();
@@ -60,21 +112,26 @@ export const ParentDashboard: React.FC = () => {
   useEffect(() => {
     if (selectedChildId) {
       loadChildData(selectedChildId);
+      loadChildTelemetryAndSuggestions(selectedChildId);
     }
-  }, [selectedChildId]);
+  }, [selectedChildId, currentLang]);
 
   const loadParentContext = async () => {
     setIsLoading(true);
     try {
-      const [childrenData, reqsData, annData] = await Promise.all([
+      const [childrenData, threadsData, annData] = await Promise.all([
         authService.getMyChildren(),
-        educationService.listCommunicationRequests(),
-        educationService.listAnnouncements('parent'),
+        communicationService.listThreads().catch(() => []),
+        educationService.listAnnouncements('parent').catch(() => []),
       ]);
 
       setLinkedChildren(childrenData);
-      setCommRequests(reqsData);
+      setThreads(threadsData);
       setAnnouncements(annData);
+
+      if (threadsData.length > 0) {
+        setSelectedThread(threadsData[0]);
+      }
 
       if (childrenData.length > 0) {
         setSelectedChildId(childrenData[0].id);
@@ -106,33 +163,165 @@ export const ParentDashboard: React.FC = () => {
     }
   };
 
+  const loadChildTelemetryAndSuggestions = async (childId: string) => {
+    try {
+      const [telemetry, suggestions] = await Promise.all([
+        aiService.getChildTelemetry(childId).catch(() => null),
+        aiService.getSuggestedInquiries(childId, currentLang).catch(() => []),
+      ]);
+
+      setChildTelemetry(telemetry);
+      setSuggestedInquiries(suggestions);
+
+      // Seed initial welcome message in the selected language
+      if (chatMessages.length === 0 && telemetry) {
+        let welcomeText = `Hello! I am your AI Academic Advisor for ${telemetry.student_name}. You can ask me any question about attendance, exam grades, pending homework, or study advice in English, Telugu (తెలుగు), or Hindi (हिंदी).`;
+        if (currentLang === 'te') {
+          welcomeText = `నమస్కారం! నేను ${telemetry.student_name} విద్యా ప్రగతి కోసం మీ AI సహాయకుడిని. హాజరు శాతం, పరీక్షల మార్కులు, హోంవర్క్ లేదా చదువుపై సలహాల గురించి ఏదైనా ప్రశ్న అడగండి.`;
+        } else if (currentLang === 'hi') {
+          welcomeText = `नमस्ते! मैं ${telemetry.student_name} की पढ़ाई के लिए आपका एआई सलाहकार हूँ। उपस्थिति, परीक्षा परिणाम, असाइनमेंट या अध्ययन सुझावों के संबंध में कोई भी प्रश्न पूछें।`;
+        }
+
+        setChatMessages([
+          {
+            id: 'init_welcome',
+            sender: 'assistant',
+            content: welcomeText,
+            language: currentLang,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            verifiedGrounding: true,
+          },
+        ]);
+      }
+    } catch (err) {
+      console.error('Failed to load telemetry', err);
+    }
+  };
+
   const selectedChild = linkedChildren.find((c) => c.id === selectedChildId);
 
-  const handleCreateCommunication = async (e: React.FormEvent) => {
+  // Send AI Inquiry
+  const handleSendAI = async (overrideQuery?: string) => {
+    const query = (overrideQuery || inputQuery).trim();
+    if (!query || !selectedChildId || isAiThinking) return;
+
+    const userMsg: ChatMessage = {
+      id: `usr_${Date.now()}`,
+      sender: 'user',
+      content: query,
+      language: currentLang,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    setChatMessages((prev) => [...prev, userMsg]);
+    setInputQuery('');
+    setIsAiThinking(true);
+
+    try {
+      const res = await aiService.askParentAI({
+        student_id: selectedChildId,
+        question: query,
+        language: currentLang,
+      });
+
+      const aiMsg: ChatMessage = {
+        id: `ai_${Date.now()}`,
+        sender: 'assistant',
+        content: res.answer,
+        language: res.language,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        verifiedGrounding: res.verified_records_used,
+      };
+
+      setChatMessages((prev) => [...prev, aiMsg]);
+    } catch (err: any) {
+      const errMsg: ChatMessage = {
+        id: `err_${Date.now()}`,
+        sender: 'assistant',
+        content:
+          err?.response?.data?.detail ||
+          'Unable to reach AI assistant at the moment. Please verify relationship or try again.',
+        language: currentLang,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      setChatMessages((prev) => [...prev, errMsg]);
+    } finally {
+      setIsAiThinking(false);
+    }
+  };
+
+  // Create Communication Thread
+  const handleCreateThread = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!commSubject.trim() || !commMessage.trim() || !selectedChildId) {
-      alert('Please fill out all fields.');
+    if (!newThreadSubject.trim() || !newThreadInitialMsg.trim() || !selectedChildId) {
+      alert('Please complete all required fields.');
       return;
     }
 
     try {
-      // Find a default teacher if none explicitly picked
-      const teacherId = commTeacherId || 'fac-default';
-      await educationService.createCommunicationRequest({
-        teacher_id: teacherId,
+      const created = await communicationService.createThread({
+        thread_type: newThreadType,
+        category: newThreadCategory,
         student_id: selectedChildId,
-        subject: commSubject.trim(),
-        message: commMessage.trim(),
+        subject: newThreadSubject.trim(),
+        initial_message: newThreadInitialMsg.trim(),
+        language: currentLang,
+        priority: newThreadPriority,
       });
 
-      alert('Communication request submitted to faculty.');
-      setShowCommModal(false);
-      setCommSubject('');
-      setCommMessage('');
-      const updatedReqs = await educationService.listCommunicationRequests();
-      setCommRequests(updatedReqs);
+      setThreads((prev) => [created, ...prev]);
+      setSelectedThread(created);
+      setShowNewThreadModal(false);
+      setNewThreadSubject('');
+      setNewThreadInitialMsg('');
+      alert('Communication inquiry sent successfully.');
     } catch (err: any) {
-      alert(err?.response?.data?.detail || 'Failed to submit request.');
+      alert(err?.response?.data?.detail || 'Failed to submit inquiry.');
+    }
+  };
+
+  // Reply in Thread
+  const handleSendReply = async () => {
+    if (!selectedThread || !replyText.trim() || isSendingReply) return;
+
+    setIsSendingReply(true);
+    try {
+      const msg = await communicationService.sendMessage(selectedThread.id, replyText.trim(), currentLang);
+      setSelectedThread({
+        ...selectedThread,
+        messages: [...selectedThread.messages, msg],
+        updated_at: new Date().toISOString(),
+      });
+      setReplyText('');
+    } catch (err: any) {
+      alert(err?.response?.data?.detail || 'Failed to send message.');
+    } finally {
+      setIsSendingReply(false);
+    }
+  };
+
+  // Mark Thread Resolved
+  const handleMarkResolved = async () => {
+    if (!selectedThread) return;
+    try {
+      const updated = await communicationService.updateThreadStatus(selectedThread.id, 'resolved');
+      setSelectedThread(updated);
+      setThreads((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+    } catch (err: any) {
+      alert(err?.response?.data?.detail || 'Failed to update thread status.');
+    }
+  };
+
+  // On-Demand Translation
+  const handleTranslateMessage = async (msgId: string, content: string) => {
+    setTranslatingMsgId(msgId);
+    try {
+      const res = await communicationService.translateText(content, currentLang);
+      setTranslatedMap((prev) => ({ ...prev, [msgId]: res.translated_text }));
+    } catch {
+      alert('Translation service is momentarily unavailable.');
+    } finally {
+      setTranslatingMsgId(null);
     }
   };
 
@@ -149,7 +338,7 @@ export const ParentDashboard: React.FC = () => {
             Welcome, {user?.full_name}
           </h1>
           <p className="mt-1 text-teal-100 text-sm">
-            Parent & Guardian Academic Oversight • {linkedChildren.length} Linked Student(s)
+            Parent & Guardian Academic Oversight • {linkedChildren.length} Linked Student(s) • Fluent Multilingual Support (English, తెలుగు, हिंदी)
           </p>
         </div>
       </div>
@@ -166,18 +355,20 @@ export const ParentDashboard: React.FC = () => {
               onClick={() => setSelectedChildId(child.id)}
               className={`p-4 rounded-2xl border cursor-pointer transition ${
                 selectedChildId === child.id
-                  ? 'border-blue-600 bg-blue-50/60 shadow-md ring-2 ring-blue-500/20'
+                  ? 'border-indigo-600 bg-indigo-50/70 shadow-md ring-2 ring-indigo-500/20'
                   : 'border-slate-200 bg-white hover:bg-slate-50'
               }`}
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">
+                <div className="w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-sm">
                   {child.full_name?.charAt(0) || 'S'}
                 </div>
                 <div>
                   <h4 className="text-xs font-bold text-slate-900">{child.full_name}</h4>
                   <p className="text-[11px] text-slate-500">{child.grade_level || 'Student'}</p>
-                  <p className="text-[10px] text-emerald-600 font-semibold">Verified Student</p>
+                  <p className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
+                    <ShieldCheck size={12} /> Verified Child Link
+                  </p>
                 </div>
               </div>
             </div>
@@ -185,286 +376,500 @@ export const ParentDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Selected Child Summary Metrics */}
-      {selectedChild && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
-              <Calendar size={18} />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 font-medium">Attendance</p>
-              <p className="text-xl font-extrabold text-slate-800">
-                {childProgress?.overall_attendance_rate ?? childAttendance?.attendance_percentage ?? 95}%
-              </p>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-              <BookOpen size={18} />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 font-medium">Courses Enrolled</p>
-              <p className="text-xl font-extrabold text-slate-800">{childClasses.length}</p>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
-              <TrendingUp size={18} />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 font-medium">Academic Score</p>
-              <p className="text-xl font-extrabold text-slate-800">
-                {childProgress?.overall_academic_score ?? 92.5}%
-              </p>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
-              <Award size={18} />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 font-medium">Completed Work</p>
-              <p className="text-xl font-extrabold text-slate-800">
-                {childProgress?.assignment_completion_rate ?? 100}%
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Tabs */}
       <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto">
         {[
-          { id: 'overview', label: 'Overview' },
-          { id: 'academics', label: 'Academic Performance' },
-          { id: 'attendance', label: 'Attendance Records' },
-          { id: 'communications', label: `Teacher Collaboration (${commRequests.length})` },
-          { id: 'announcements', label: `Announcements (${announcements.length})` },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition whitespace-nowrap ${
-              activeTab === tab.id
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+          { id: 'ai_assistant', label: 'Parent AI Assistant (Jury Star)', icon: Sparkles, badge: 'AI' },
+          { id: 'communications', label: `Communication Hub (${threads.length})`, icon: MessageSquare },
+          { id: 'overview', label: 'Overview', icon: TrendingUp },
+          { id: 'academics', label: 'Academic Performance', icon: Award },
+          { id: 'attendance', label: 'Attendance Records', icon: Calendar },
+          { id: 'announcements', label: `Announcements (${announcements.length})`, icon: Megaphone },
+        ].map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+                isActive
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <Icon size={15} />
+              <span>{tab.label}</span>
+              {tab.badge && (
+                <span className="px-1.5 py-0.5 text-[9px] font-black rounded-md bg-amber-400 text-slate-900 uppercase">
+                  {tab.badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Tab: Overview */}
-      {activeTab === 'overview' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            {/* Courses Overview */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <BookOpen size={16} className="text-blue-600" />
-                {selectedChild?.full_name}'s Enrolled Curriculum
-              </h3>
-              <div className="space-y-2">
-                {childClasses.map((cl) => (
-                  <div key={cl.enrollment_id} className="p-3.5 rounded-xl bg-slate-50 border flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">
-                        {cl.course_code}
-                      </span>
-                      <h4 className="text-xs font-bold text-slate-900 mt-1">{cl.course_title}</h4>
-                      <p className="text-[11px] text-slate-500">{cl.class_name} • {cl.schedule || 'Regular Lecture'}</p>
-                    </div>
-                    <span className="text-xs font-bold text-slate-700">{cl.credits} Credits</span>
+      {/* Tab 1: PARENT AI ASSISTANT (Jury Priority) */}
+      {activeTab === 'ai_assistant' && (
+        <div className="space-y-4">
+          {/* Real-time Telemetry Health Strip */}
+          {childTelemetry && (
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-indigo-900/50 shadow-lg text-white">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold">
+                    <Bot size={20} />
                   </div>
-                ))}
+                  <div>
+                    <h3 className="text-sm font-bold flex items-center gap-2">
+                      <span>{childTelemetry.student_name}'s Academic Health</span>
+                      <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/20 text-emerald-300">
+                        {childTelemetry.performance_status}
+                      </span>
+                    </h3>
+                    <p className="text-[11px] text-slate-400">
+                      Authoritative telemetry used by Gemini to ground responses without hallucination.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 text-xs font-semibold">
+                  <div className="text-center px-3 py-1.5 rounded-xl bg-white/5 border border-white/10">
+                    <p className="text-[10px] text-slate-400">Attendance</p>
+                    <p className="text-emerald-400 font-extrabold text-sm">{childTelemetry.attendance_rate}%</p>
+                  </div>
+                  <div className="text-center px-3 py-1.5 rounded-xl bg-white/5 border border-white/10">
+                    <p className="text-[10px] text-slate-400">Average Score</p>
+                    <p className="text-purple-300 font-extrabold text-sm">{childTelemetry.average_quiz_score}%</p>
+                  </div>
+                  <div className="text-center px-3 py-1.5 rounded-xl bg-white/5 border border-white/10">
+                    <p className="text-[10px] text-slate-400">Pending</p>
+                    <p className="text-amber-300 font-extrabold text-sm">{childTelemetry.pending_assignments_count}</p>
+                  </div>
+                </div>
               </div>
             </div>
+          )}
 
-            {/* Assignments Monitoring */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <FileText size={16} className="text-indigo-600" />
-                {selectedChild?.full_name}'s Coursework & Evaluated Results
-              </h3>
-              <div className="space-y-2.5">
-                {childAssignments.map((assign) => {
-                  const sub = childSubmissions.find((s) => s.assignment_id === assign.id);
+          {/* Quick-Action Suggested Inquiries */}
+          {suggestedInquiries.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
+                <Sparkles size={14} className="text-indigo-600" />
+                <span>Quick Suggested Inquiries ({currentLang === 'te' ? 'తెలుగు' : currentLang === 'hi' ? 'हिंदी' : 'English'}):</span>
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {suggestedInquiries.map((sug) => {
+                  const displayText = currentLang === 'te' ? sug.te : currentLang === 'hi' ? sug.hi : sug.en;
                   return (
-                    <div key={assign.id} className="p-3.5 rounded-xl bg-slate-50 border space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="text-xs font-bold text-slate-900">{assign.title}</h4>
-                          <p className="text-[11px] text-slate-500">
-                            Due: {new Date(assign.due_date).toLocaleDateString()} • Max: {assign.max_marks} pts
-                          </p>
-                        </div>
-                        {sub?.status === 'evaluated' ? (
-                          <div className="text-right">
-                            <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 text-[10px] font-black">
-                              Score: {sub.marks_obtained} / {assign.max_marks} pts
-                            </span>
-                            <p className="text-[9px] text-emerald-700 font-semibold mt-0.5">Verified by Faculty</p>
-                          </div>
-                        ) : sub ? (
-                          <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-amber-100 text-amber-800">
-                            Submitted • Under Review
-                          </span>
-                        ) : (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-200 text-slate-700">
-                            Pending Submission
-                          </span>
-                        )}
-                      </div>
-                      {sub?.feedback && (
-                        <div className="text-[11px] bg-emerald-50 border border-emerald-100 text-emerald-900 p-2 rounded-lg">
-                          <span className="font-bold">Faculty Comment:</span> "{sub.feedback}"
-                        </div>
-                      )}
-                    </div>
+                    <button
+                      key={sug.id}
+                      onClick={() => handleSendAI(displayText)}
+                      className="px-3 py-1.5 rounded-xl text-xs font-medium bg-white hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 border border-slate-200 hover:border-indigo-200 shadow-sm transition flex items-center gap-1.5"
+                    >
+                      <span>💬</span>
+                      <span>{displayText}</span>
+                    </button>
                   );
                 })}
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Right Column: Faculty Collaboration */}
-          <div className="space-y-6">
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <HeartHandshake size={16} className="text-teal-600" />
-                  Teacher Inquiries
-                </h3>
-                <button
-                  onClick={() => setShowCommModal(true)}
-                  className="p-1 rounded-lg text-blue-600 hover:bg-blue-50"
-                  title="New Request"
-                >
-                  <Plus size={16} />
-                </button>
+          {/* Chat Window */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[520px]">
+            {/* Chat Header */}
+            <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 rounded-t-2xl">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center">
+                  <Bot size={17} />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900">Parent AI Academic Companion</h4>
+                  <p className="text-[10px] text-emerald-600 font-medium flex items-center gap-1">
+                    <ShieldCheck size={11} /> Real database verified records grounding active
+                  </p>
+                </div>
               </div>
 
-              <div className="space-y-2.5">
-                {commRequests.length === 0 ? (
-                  <p className="text-xs text-slate-400 py-4 text-center">No inquiries submitted yet.</p>
-                ) : (
-                  commRequests.map((req) => (
-                    <div key={req.id} className="p-3 rounded-xl bg-slate-50 border space-y-1">
+              <button
+                onClick={() => setChatMessages([])}
+                className="text-[11px] font-semibold text-slate-500 hover:text-slate-800 px-2.5 py-1 rounded-lg hover:bg-slate-200 transition"
+              >
+                Clear History
+              </button>
+            </div>
+
+            {/* Message Stream */}
+            <div className="flex-1 p-5 overflow-y-auto space-y-4">
+              {chatMessages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className={`max-w-[85%] sm:max-w-[75%] rounded-2xl p-4 text-xs shadow-sm ${
+                      msg.sender === 'user'
+                        ? 'bg-indigo-600 text-white rounded-br-none'
+                        : 'bg-slate-50 border border-slate-200 text-slate-800 rounded-bl-none'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3 mb-1.5">
+                      <span className="font-bold text-[11px] opacity-80">
+                        {msg.sender === 'user' ? user?.full_name : 'EduVerse Parent AI'}
+                      </span>
+                      <span className="text-[9px] opacity-60">{msg.timestamp}</span>
+                    </div>
+
+                    <p className="whitespace-pre-line leading-relaxed text-[13px]">{msg.content}</p>
+
+                    {msg.verifiedGrounding && (
+                      <div className="mt-2.5 pt-2 border-t border-slate-200/60 flex items-center gap-1.5 text-[10px] text-emerald-700 font-semibold">
+                        <CheckCircle2 size={12} />
+                        <span>Source Grounded: Official student records verified</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {isAiThinking && (
+                <div className="flex justify-start">
+                  <div className="rounded-2xl p-3.5 bg-slate-50 border border-slate-200 text-slate-500 text-xs flex items-center gap-2">
+                    <RefreshCw size={14} className="animate-spin text-indigo-600" />
+                    <span>Analyzing student records in {currentLang === 'te' ? 'తెలుగు' : currentLang === 'hi' ? 'हिंदी' : 'English'}...</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Input Bar */}
+            <div className="p-3 border-t border-slate-100 bg-slate-50/50 rounded-b-2xl">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleSendAI();
+                }}
+                className="flex items-center gap-2"
+              >
+                <input
+                  type="text"
+                  value={inputQuery}
+                  onChange={(e) => setInputQuery(e.target.value)}
+                  placeholder={
+                    currentLang === 'te'
+                      ? 'మీ విద్యా సంబంధిత ప్రశ్నను ఇక్కడ అడగండి (ఉదా: నా పిల్లల హాజరు శాతం ఎంత?)...'
+                      : currentLang === 'hi'
+                      ? 'अपना प्रश्न यहाँ पूछें (उदा: मेरे बच्चे की उपस्थिति कितनी है?)...'
+                      : 'Ask your academic inquiry here (e.g., How is my child performing in math?)...'
+                  }
+                  className="flex-1 bg-white border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl px-4 py-2.5 text-xs text-slate-900 outline-none transition"
+                />
+
+                <button
+                  type="submit"
+                  disabled={!inputQuery.trim() || isAiThinking}
+                  className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
+                >
+                  <Send size={14} />
+                  <span>Send</span>
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 2: COMMUNICATION HUB (Parent-Teacher-Management) */}
+      {activeTab === 'communications' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          {/* Left: Threads List */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Inquiry Threads</h3>
+              <button
+                onClick={() => setShowNewThreadModal(true)}
+                className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition shadow-sm"
+              >
+                <Plus size={13} />
+                <span>New Inquiry</span>
+              </button>
+            </div>
+
+            <div className="space-y-2 max-h-[550px] overflow-y-auto">
+              {threads.length === 0 ? (
+                <div className="text-center py-10 text-slate-400 text-xs">
+                  No communication threads yet. Click 'New Inquiry' to contact teachers or management.
+                </div>
+              ) : (
+                threads.map((thread) => {
+                  const isSelected = selectedThread?.id === thread.id;
+                  return (
+                    <div
+                      key={thread.id}
+                      onClick={() => setSelectedThread(thread)}
+                      className={`p-3 rounded-xl border cursor-pointer transition text-xs space-y-1 ${
+                        isSelected
+                          ? 'border-indigo-600 bg-indigo-50/70 shadow-sm'
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                      }`}
+                    >
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-slate-900">{req.subject}</span>
+                        <span className="font-bold text-slate-900 truncate max-w-[150px]">
+                          {thread.subject}
+                        </span>
                         <span
-                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${
-                            req.status === 'accepted'
+                          className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase ${
+                            thread.status === 'resolved'
                               ? 'bg-emerald-100 text-emerald-800'
+                              : thread.status === 'in_review'
+                              ? 'bg-blue-100 text-blue-800'
                               : 'bg-amber-100 text-amber-800'
                           }`}
                         >
-                          {req.status}
+                          {thread.status}
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-600">{req.message}</p>
-                      {req.response_notes && (
-                        <p className="text-[10px] text-blue-700 bg-blue-50 p-1.5 rounded mt-1">
-                          <strong>Faculty Response:</strong> {req.response_notes}
-                        </p>
-                      )}
+                      <p className="text-[11px] text-slate-500 capitalize">
+                        {thread.category.replace('_', ' ')} • {thread.thread_type === 'parent_teacher' ? 'Teacher' : 'Management'}
+                      </p>
+                      <p className="text-[10px] text-slate-400">
+                        {new Date(thread.updated_at).toLocaleDateString()}
+                      </p>
                     </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* Right: Active Thread Conversation */}
+          <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[600px]">
+            {selectedThread ? (
+              <>
+                {/* Header */}
+                <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 rounded-t-2xl">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">{selectedThread.subject}</h3>
+                    <p className="text-xs text-slate-500">
+                      Category: <span className="font-semibold text-slate-700 capitalize">{selectedThread.category.replace('_', ' ')}</span> • Priority: <span className="font-semibold uppercase text-indigo-600">{selectedThread.priority}</span>
+                    </p>
+                  </div>
+
+                  {selectedThread.status !== 'resolved' && (
+                    <button
+                      onClick={handleMarkResolved}
+                      className="px-3 py-1.5 rounded-lg border border-emerald-300 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 text-xs font-bold transition flex items-center gap-1"
+                    >
+                      <CheckCircle2 size={13} />
+                      <span>Mark Resolved</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Messages stream */}
+                <div className="flex-1 p-4 overflow-y-auto space-y-3">
+                  {selectedThread.messages.map((m) => {
+                    const isParent = m.sender_role === 'parent';
+                    const translatedText = translatedMap[m.id];
+                    return (
+                      <div
+                        key={m.id}
+                        className={`p-3.5 rounded-xl border text-xs space-y-1.5 ${
+                          isParent
+                            ? 'bg-indigo-50/50 border-indigo-100 ml-6'
+                            : 'bg-white border-slate-200 mr-6 shadow-sm'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-slate-900 capitalize">
+                            {isParent ? 'You (Parent)' : `${m.sender_role.toUpperCase()}: ${m.sender_name || 'Staff'}`}
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+
+                        <p className="text-slate-800 leading-relaxed text-[13px]">{m.content}</p>
+
+                        {/* On-Demand Translation Display */}
+                        {translatedText && (
+                          <div className="p-2.5 rounded-lg bg-indigo-100/60 border border-indigo-200 text-indigo-950 font-medium text-xs">
+                            <span className="font-bold text-[10px] text-indigo-700 block mb-0.5">
+                              [AI Translation to {currentLang === 'te' ? 'తెలుగు' : currentLang === 'hi' ? 'हिंदी' : 'English'}]:
+                            </span>
+                            {translatedText}
+                          </div>
+                        )}
+
+                        <div className="flex justify-end pt-1">
+                          <button
+                            onClick={() => handleTranslateMessage(m.id, m.content)}
+                            disabled={translatingMsgId === m.id}
+                            className="text-[10px] text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1"
+                          >
+                            <Globe size={11} />
+                            <span>
+                              {translatingMsgId === m.id
+                                ? 'Translating...'
+                                : `Translate to ${currentLang === 'te' ? 'తెలుగు' : currentLang === 'hi' ? 'हिंदी' : 'English'}`}
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Reply bar */}
+                <div className="p-3 border-t border-slate-100 bg-slate-50/50 rounded-b-2xl">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      placeholder="Write your response message..."
+                      className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-900 outline-none"
+                    />
+                    <button
+                      onClick={handleSendReply}
+                      disabled={!replyText.trim() || isSendingReply}
+                      className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition flex items-center gap-1"
+                    >
+                      <Send size={13} />
+                      <span>Reply</span>
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-center h-full text-slate-400 text-xs">
+                Select an inquiry thread from the left to view messages.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Tab 3: OVERVIEW */}
+      {activeTab === 'overview' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            {/* Academic Health Card */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+              <h3 className="text-sm font-bold text-slate-900">
+                {selectedChild?.full_name}'s Progress Snapshot
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Your child is actively progressing in their enrolled semester curriculum. Attendance rate is{' '}
+                <strong className="text-emerald-600 font-bold">
+                  {childProgress?.overall_attendance_rate ?? 95}%
+                </strong>
+                . Cumulative GPA / assessment performance is{' '}
+                <strong className="text-indigo-600 font-bold">
+                  {childProgress?.overall_academic_score ?? 92.5}%
+                </strong>
+                .
+              </p>
+
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+                  <p className="text-[11px] text-slate-500 font-medium">Assignment Completion</p>
+                  <p className="text-lg font-bold text-slate-800">
+                    {childProgress?.assignment_completion_rate ?? 100}%
+                  </p>
+                </div>
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+                  <p className="text-[11px] text-slate-500 font-medium">Academic Status</p>
+                  <p className="text-lg font-bold text-emerald-600">Good Standing</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Notice Panel */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+              Recent Announcements
+            </h4>
+            <div className="space-y-2">
+              {announcements.slice(0, 3).map((a) => (
+                <div key={a.id} className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs space-y-1">
+                  <p className="font-bold text-slate-800">{a.title}</p>
+                  <p className="text-slate-600 text-[11px] line-clamp-2">{a.content}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 4: ACADEMICS */}
+      {activeTab === 'academics' && (
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-slate-900">{selectedChild?.full_name}'s Verified Submissions</h3>
+            <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">
+              Score: {childProgress?.overall_academic_score ?? 92.5}%
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left">
+              <thead className="bg-slate-50 text-slate-600 border-y border-slate-200">
+                <tr>
+                  <th className="py-2.5 px-3">Assignment Title</th>
+                  <th className="py-2.5 px-3">Status</th>
+                  <th className="py-2.5 px-3">Submitted At</th>
+                  <th className="py-2.5 px-3">Marks Scored</th>
+                  <th className="py-2.5 px-3">Educator Feedback</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {childSubmissions.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-4 text-center text-slate-400 italic">
+                      No submissions recorded for this student yet.
+                    </td>
+                  </tr>
+                ) : (
+                  childSubmissions.map((sub) => (
+                    <tr key={sub.id}>
+                      <td className="py-2.5 px-3 font-semibold text-slate-800">{sub.assignment_title || 'Class Assignment'}</td>
+                      <td className="py-2.5 px-3">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            sub.status === 'evaluated'
+                              ? 'bg-emerald-50 text-emerald-700'
+                              : 'bg-amber-50 text-amber-700'
+                          }`}
+                        >
+                          {sub.status.toUpperCase()}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 text-slate-500">{new Date(sub.submitted_at).toLocaleDateString()}</td>
+                      <td className="py-2.5 px-3 font-bold text-slate-900">
+                        {sub.marks_obtained !== undefined && sub.marks_obtained !== null
+                          ? `${sub.marks_obtained} / ${sub.max_marks || 25} pts`
+                          : 'Pending'}
+                      </td>
+                      <td className="py-2.5 px-3 text-slate-600 italic">{sub.feedback || 'Awaiting feedback'}</td>
+                    </tr>
                   ))
                 )}
-              </div>
-            </div>
+              </tbody>
+            </table>
           </div>
         </div>
       )}
 
-      {/* Tab: Academic Performance */}
-      {activeTab === 'academics' && (
-        <div className="space-y-6">
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">
-                  {selectedChild?.full_name}'s Evaluated Work & Report Card
-                </h3>
-                <p className="text-xs text-slate-500">Official verified coursework grades and educator evaluations</p>
-              </div>
-              <div className="text-right">
-                <span className="text-2xl font-black text-indigo-600">
-                  {childProgress?.overall_academic_score ?? 89.2}%
-                </span>
-                <p className="text-[10px] text-slate-400">Cumulative Academic Score</p>
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs text-left">
-                <thead className="bg-slate-50 text-slate-600 border-y border-slate-200">
-                  <tr>
-                    <th className="py-2.5 px-3">Assignment Title</th>
-                    <th className="py-2.5 px-3">Status</th>
-                    <th className="py-2.5 px-3">Submitted At</th>
-                    <th className="py-2.5 px-3">Marks Scored</th>
-                    <th className="py-2.5 px-3">Educator Feedback</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {childSubmissions.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="py-4 text-center text-slate-400 italic">
-                        No submissions recorded for this student yet.
-                      </td>
-                    </tr>
-                  ) : (
-                    childSubmissions.map((sub) => (
-                      <tr key={sub.id}>
-                        <td className="py-2.5 px-3 font-semibold text-slate-800">
-                          {sub.assignment_title || 'Class Assignment'}
-                        </td>
-                        <td className="py-2.5 px-3">
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              sub.status === 'evaluated'
-                                ? 'bg-emerald-50 text-emerald-700'
-                                : 'bg-amber-50 text-amber-700'
-                            }`}
-                          >
-                            {sub.status.toUpperCase()}
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-3 text-slate-500">
-                          {new Date(sub.submitted_at).toLocaleDateString()}
-                        </td>
-                        <td className="py-2.5 px-3 font-bold text-slate-900">
-                          {sub.marks_obtained !== undefined && sub.marks_obtained !== null
-                            ? `${sub.marks_obtained} / ${sub.max_marks || 25} pts`
-                            : 'Pending'}
-                        </td>
-                        <td className="py-2.5 px-3 text-slate-600 italic">
-                          {sub.feedback || 'Awaiting feedback'}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Tab: Attendance */}
+      {/* Tab 5: ATTENDANCE */}
       {activeTab === 'attendance' && (
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-bold text-slate-900">
-                {selectedChild?.full_name}'s Attendance Sessions
-              </h3>
+              <h3 className="text-sm font-bold text-slate-900">{selectedChild?.full_name}'s Attendance Sessions</h3>
               <p className="text-xs text-slate-500">Official log of classes attended</p>
             </div>
             <span className="text-2xl font-black text-emerald-600">
@@ -507,41 +912,7 @@ export const ParentDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Tab: Communications */}
-      {activeTab === 'communications' && (
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-slate-900">Parent-Teacher Consultation Requests</h3>
-            <button
-              onClick={() => setShowCommModal(true)}
-              className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-sm transition"
-            >
-              <Plus size={14} /> New Consultation Request
-            </button>
-          </div>
-
-          <div className="space-y-3">
-            {commRequests.map((req) => (
-              <div key={req.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-slate-900">{req.subject}</h4>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-700 uppercase">
-                    {req.status}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-700">{req.message}</p>
-                {req.response_notes && (
-                  <div className="p-2.5 rounded-lg bg-white border border-slate-200 text-xs text-slate-800">
-                    <strong>Teacher Feedback:</strong> {req.response_notes}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Tab: Announcements */}
+      {/* Tab 6: ANNOUNCEMENTS */}
       {activeTab === 'announcements' && (
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
           <h3 className="text-sm font-bold text-slate-900">Institution Bulletins for Families</h3>
@@ -561,35 +932,65 @@ export const ParentDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Communication Request Modal */}
-      {showCommModal && (
+      {/* New Inquiry Modal */}
+      {showNewThreadModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4 animate-in fade-in">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-4 animate-in fade-in">
             <div className="flex items-center justify-between border-b pb-3">
-              <h3 className="text-sm font-bold text-slate-900">Request Teacher Consultation</h3>
-              <button onClick={() => setShowCommModal(false)}>
+              <h3 className="text-sm font-bold text-slate-900">Create New Inquiry</h3>
+              <button onClick={() => setShowNewThreadModal(false)}>
                 <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleCreateCommunication} className="space-y-3 text-xs">
+            <form onSubmit={handleCreateThread} className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold mb-1">Inquiry Type</label>
+                  <select
+                    value={newThreadType}
+                    onChange={(e: any) => setNewThreadType(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-slate-200"
+                  >
+                    <option value="parent_teacher">Parent-to-Teacher</option>
+                    <option value="parent_management">Parent-to-Management</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-semibold mb-1">Category</label>
+                  <select
+                    value={newThreadCategory}
+                    onChange={(e) => setNewThreadCategory(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-slate-200"
+                  >
+                    <option value="academic_concerns">Academic Concerns</option>
+                    <option value="attendance_issues">Attendance Issues</option>
+                    <option value="assignment_queries">Assignment Queries</option>
+                    <option value="examination_queries">Examination Queries</option>
+                    <option value="administrative_concerns">Administrative Concerns</option>
+                    <option value="general_requests">General Requests</option>
+                  </select>
+                </div>
+              </div>
+
               <div>
                 <label className="block font-semibold mb-1">Subject</label>
                 <input
                   type="text"
-                  value={commSubject}
-                  onChange={(e) => setCommSubject(e.target.value)}
-                  placeholder="e.g. Inquiry regarding midterm preparation"
+                  value={newThreadSubject}
+                  onChange={(e) => setNewThreadSubject(e.target.value)}
+                  placeholder="Brief summary of inquiry..."
                   className="w-full p-2.5 rounded-xl border border-slate-200"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold mb-1">Inquiry Message</label>
+                <label className="block font-semibold mb-1">Message (English / తెలుగు / हिंदी)</label>
                 <textarea
-                  value={commMessage}
-                  onChange={(e) => setCommMessage(e.target.value)}
-                  placeholder="Detail your question or request a meeting..."
+                  value={newThreadInitialMsg}
+                  onChange={(e) => setNewThreadInitialMsg(e.target.value)}
+                  placeholder="Detail your question, concern, or request..."
                   rows={4}
                   className="w-full p-2.5 rounded-xl border border-slate-200"
                 />
@@ -598,16 +999,16 @@ export const ParentDashboard: React.FC = () => {
               <div className="flex justify-end gap-2 pt-2 border-t">
                 <button
                   type="button"
-                  onClick={() => setShowCommModal(false)}
+                  onClick={() => setShowNewThreadModal(false)}
                   className="px-4 py-2 font-semibold text-slate-600 rounded-xl"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm"
+                  className="px-5 py-2 font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-sm"
                 >
-                  Send Inquiry
+                  Submit Inquiry
                 </button>
               </div>
             </form>

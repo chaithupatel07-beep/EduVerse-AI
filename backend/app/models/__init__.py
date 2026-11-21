@@ -20,7 +20,19 @@ from app.models.material import StudyMaterial
 from app.models.assignment import Assignment, AssignmentSubmission
 from app.models.quiz import Quiz, QuizQuestion, QuizOption, QuizAttempt, QuizAnswer
 from app.models.attendance import AttendanceSession, AttendanceRecord, AttendanceAuditLog
-from app.models.communication import Announcement, Notification, CommunicationRequest
+from app.models.communication import (
+    Announcement,
+    Notification,
+    CommunicationRequest,
+    CommunicationThread,
+    CommunicationMessage,
+)
+from app.models.ai import (
+    AIConversation,
+    AIMessage,
+    DocumentChunk,
+    UserLanguagePreference,
+)
 
 __all__ = [
     "Base",
@@ -55,4 +67,10 @@ __all__ = [
     "Announcement",
     "Notification",
     "CommunicationRequest",
+    "CommunicationThread",
+    "CommunicationMessage",
+    "AIConversation",
+    "AIMessage",
+    "DocumentChunk",
+    "UserLanguagePreference",
 ]

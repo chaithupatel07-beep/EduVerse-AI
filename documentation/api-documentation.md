@@ -268,3 +268,63 @@ Returns parent-teacher consultation requests.
 Parent initiates a consultation inquiry with a specific teacher regarding their student.
 - **Access**: Parent.
 
+---
+
+## 13. Phase 4 Generative AI & RAG Endpoints
+
+### `POST /api/v1/ai/chat`
+General conversational AI and RAG study companion. Answers student and educator queries grounded in indexed documents with source citations.
+- **Access**: Authenticated users.
+- **Body**: `{ "question": "Explain Newton's third law", "conversation_id": "...", "language": "en", "course_id": "..." }`
+
+### `POST /api/v1/ai/quiz/generate`
+Generates structured formative quiz questions with multiple choices and explanations.
+- **Access**: Teacher or Admin.
+- **Body**: `{ "topic": "Photosynthesis", "subject": "Biology", "difficulty": "intermediate", "num_questions": 5, "language": "en" }`
+
+### `POST /api/v1/ai/lesson-plan/generate`
+Generates a complete pedagogy-aligned lesson plan draft.
+- **Access**: Teacher or Admin.
+- **Body**: `{ "topic": "Calculus Fundamentals", "grade_level": "Grade 11", "learning_objectives": ["Derivatives", "Limits"], "language": "en" }`
+
+### `POST /api/v1/ai/materials/{id}/summarize`
+Summarizes study material contents with bullet points and key takeaways.
+- **Access**: Authenticated users.
+
+### `GET` / `POST /api/v1/ai/preferences/language`
+Reads and updates user-preferred system and AI communication language (`en`, `te`, `hi`).
+
+---
+
+## 14. Phase 4 Parent AI Assistant & Multilingual Communication Hub
+
+### `POST /api/v1/parent/ai/chat`
+Authoritative AI assistant for parents, grounded strictly in the verified linked child's live telemetry (attendance %, quiz grades, pending assignments) with zero hallucination. Supports English, Telugu, and Hindi.
+- **Access**: Parent only (validates verified child relationship).
+- **Body**: `{ "student_id": "...", "question": "హాజరు శాతం ఎంత?", "language": "te" }`
+
+### `GET /api/v1/parent/ai/suggested-questions`
+Returns localized prompt suggestions for parent inquiries.
+
+### `POST /api/v1/communication/threads`
+Creates a categorized communication thread (`academic_concerns`, `attendance_issues`, `assignment_queries`, etc.).
+- **Access**: Authenticated users (Parents, Teachers, Admins).
+
+### `GET /api/v1/communication/threads`
+Lists communication threads filtered by user role or status.
+
+### `POST /api/v1/communication/threads/{thread_id}/messages`
+Sends a message or reply in an existing inquiry thread.
+
+### `GET /api/v1/communication/threads/{thread_id}/messages`
+Retrieves messages for a given thread.
+
+### `PUT /api/v1/communication/threads/{thread_id}/status`
+Updates thread status (`pending`, `in_review`, `resolved`, `closed`).
+- **Access**: Teacher or Admin.
+
+### `POST /api/v1/communication/translate`
+Performs real-time on-demand translation of inquiry messages between English, Telugu, and Hindi.
+- **Body**: `{ "text": "...", "source_language": "te", "target_language": "en" }`
+
+

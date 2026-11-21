@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { educationService } from '../../services/educationService';
+import { aiService } from '../../services/aiService';
+import { communicationService, CommunicationThread } from '../../services/communicationService';
+import { languageService } from '../../services/languageService';
 import {
   ClassRoom,
   Course,
@@ -24,12 +27,37 @@ import {
   Check,
   Award,
   Layers,
+  Sparkles,
+  Bot,
+  Send,
+  MessageSquare,
+  Globe,
+  Clock,
+  RefreshCw,
 } from 'lucide-react';
 
 export const TeacherDashboard: React.FC = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'classes' | 'materials' | 'assignments' | 'quizzes' | 'attendance' | 'announcements'>('classes');
+  const [activeTab, setActiveTab] = useState<
+    'classes' | 'ai_copilot' | 'parent_inquiries' | 'materials' | 'assignments' | 'quizzes' | 'attendance' | 'announcements'
+  >('classes');
   const [isLoading, setIsLoading] = useState(true);
+
+  // AI Copilot States
+  const [lessonSubject, setLessonSubject] = useState('');
+  const [lessonGrade, setLessonGrade] = useState('Grade 10');
+  const [lessonTopic, setLessonTopic] = useState('');
+  const [lessonDuration, setLessonDuration] = useState(45);
+  const [lessonLanguage, setLessonLanguage] = useState(languageService.getCurrentLanguage());
+  const [generatedLessonPlan, setGeneratedLessonPlan] = useState<any | null>(null);
+  const [isGeneratingLesson, setIsGeneratingLesson] = useState(false);
+
+  // Parent Inquiries State
+  const [parentThreads, setParentThreads] = useState<CommunicationThread[]>([]);
+  const [selectedParentThread, setSelectedParentThread] = useState<CommunicationThread | null>(null);
+  const [teacherReplyText, setTeacherReplyText] = useState('');
+  const [isReplying, setIsReplying] = useState(false);
+  const [teacherTranslatedMap, setTeacherTranslatedMap] = useState<Record<string, string>>({});
 
   // Data states
   const [assignedClasses, setAssignedClasses] = useState<any[]>([]);
@@ -86,7 +114,7 @@ export const TeacherDashboard: React.FC = () => {
   const loadAllTeacherData = async () => {
     setIsLoading(true);
     try {
-      const [classesData, coursesData, matsData, assignsData, quizzesData, annData] =
+      const [classesData, coursesData, matsData, assignsData, quizzesData, annData, threadsData] =
         await Promise.all([
           educationService.getTeacherAssignedClasses(),
           educationService.listCourses(),
@@ -94,6 +122,7 @@ export const TeacherDashboard: React.FC = () => {
           educationService.listAssignments(),
           educationService.listQuizzes(),
           educationService.listAnnouncements(),
+          communicationService.listThreads().catch(() => []),
         ]);
 
       setAssignedClasses(classesData);
@@ -102,6 +131,11 @@ export const TeacherDashboard: React.FC = () => {
       setAssignments(assignsData);
       setQuizzes(quizzesData);
       setAnnouncements(annData);
+      setParentThreads(threadsData);
+
+      if (threadsData.length > 0) {
+        setSelectedParentThread(threadsData[0]);
+      }
 
       if (classesData.length > 0) {
         const firstClassId = classesData[0].class_id;
@@ -113,6 +147,69 @@ export const TeacherDashboard: React.FC = () => {
       console.error('Failed to load teacher dashboard', err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleGenerateLesson = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!lessonSubject.trim() || !lessonTopic.trim() || isGeneratingLesson) return;
+
+    setIsGeneratingLesson(true);
+    try {
+      const plan = await aiService.generateLessonPlan({
+        subject_name: lessonSubject.trim(),
+        grade_level: lessonGrade,
+        topic: lessonTopic.trim(),
+        duration_minutes: lessonDuration,
+        language: lessonLanguage,
+      });
+      setGeneratedLessonPlan(plan);
+    } catch (err: any) {
+      alert(err?.response?.data?.detail || 'Failed to generate lesson plan.');
+    } finally {
+      setIsGeneratingLesson(false);
+    }
+  };
+
+  const handleSendTeacherReply = async () => {
+    if (!selectedParentThread || !teacherReplyText.trim() || isReplying) return;
+
+    setIsReplying(true);
+    try {
+      const newMsg = await communicationService.sendMessage(
+        selectedParentThread.id,
+        teacherReplyText.trim(),
+        lessonLanguage
+      );
+      setSelectedParentThread({
+        ...selectedParentThread,
+        messages: [...selectedParentThread.messages, newMsg],
+      });
+      setTeacherReplyText('');
+    } catch (err: any) {
+      alert(err?.response?.data?.detail || 'Failed to send reply.');
+    } finally {
+      setIsReplying(false);
+    }
+  };
+
+  const handleResolveThread = async (threadId: string) => {
+    try {
+      const updated = await communicationService.updateThreadStatus(threadId, 'resolved');
+      setSelectedParentThread(updated);
+      setParentThreads((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+      alert('Thread marked as resolved.');
+    } catch (err: any) {
+      alert(err?.response?.data?.detail || 'Failed to update status.');
+    }
+  };
+
+  const handleTeacherTranslate = async (msgId: string, text: string) => {
+    try {
+      const res = await communicationService.translateText(text, lessonLanguage);
+      setTeacherTranslatedMap((prev) => ({ ...prev, [msgId]: res.translated_text }));
+    } catch {
+      alert('Translation service unavailable.');
     }
   };
 
@@ -337,6 +434,8 @@ export const TeacherDashboard: React.FC = () => {
       <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto">
         {[
           { id: 'classes', label: 'My Classrooms & Students' },
+          { id: 'ai_copilot', label: 'AI Educator Copilot' },
+          { id: 'parent_inquiries', label: `Parent Inquiries (${parentThreads.length})` },
           { id: 'materials', label: `Study Materials (${materials.length})` },
           { id: 'assignments', label: `Assignments (${assignments.length})` },
           { id: 'quizzes', label: `Quizzes (${quizzes.length})` },
@@ -426,6 +525,261 @@ export const TeacherDashboard: React.FC = () => {
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab: AI Educator Copilot */}
+      {activeTab === 'ai_copilot' && (
+        <div className="space-y-6">
+          <div className="bg-gradient-to-r from-indigo-900 via-slate-900 to-indigo-950 p-6 rounded-2xl text-white border border-indigo-800 shadow-md">
+            <div className="max-w-2xl">
+              <span className="px-2.5 py-1 rounded-md bg-amber-400 text-slate-950 text-[10px] font-black uppercase tracking-wider">
+                Pedagogical Copilot
+              </span>
+              <h2 className="text-xl font-extrabold mt-2">AI Curriculum & Lesson Plan Designer</h2>
+              <p className="text-xs text-indigo-200 mt-1">
+                Draft comprehensive, standards-aligned lesson plans with Bloom's taxonomy objectives, timing breakdowns, interactive activities, and homework suggestions in English, Telugu (తెలుగు), or Hindi (हिंदी).
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Form */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                <Sparkles size={14} className="text-indigo-600" />
+                <span>Lesson Parameters</span>
+              </h3>
+
+              <form onSubmit={handleGenerateLesson} className="space-y-3 text-xs">
+                <div>
+                  <label className="block font-semibold mb-1">Subject</label>
+                  <input
+                    type="text"
+                    value={lessonSubject}
+                    onChange={(e) => setLessonSubject(e.target.value)}
+                    placeholder="e.g. Physics, Computer Science, Biology"
+                    className="w-full p-2.5 rounded-xl border border-slate-200"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block font-semibold mb-1">Target Grade</label>
+                    <input
+                      type="text"
+                      value={lessonGrade}
+                      onChange={(e) => setLessonGrade(e.target.value)}
+                      placeholder="Grade 10 / Sem 3"
+                      className="w-full p-2.5 rounded-xl border border-slate-200"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold mb-1">Duration (min)</label>
+                    <input
+                      type="number"
+                      value={lessonDuration}
+                      onChange={(e) => setLessonDuration(Number(e.target.value))}
+                      className="w-full p-2.5 rounded-xl border border-slate-200"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-semibold mb-1">Lesson Topic</label>
+                  <input
+                    type="text"
+                    value={lessonTopic}
+                    onChange={(e) => setLessonTopic(e.target.value)}
+                    placeholder="e.g. Photosynthesis & Calvin Cycle, Newton's Laws"
+                    className="w-full p-2.5 rounded-xl border border-slate-200"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold mb-1">Instruction Language</label>
+                  <select
+                    value={lessonLanguage}
+                    onChange={(e: any) => setLessonLanguage(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 bg-white"
+                  >
+                    <option value="en">English</option>
+                    <option value="te">తెలుగు (Telugu)</option>
+                    <option value="hi">हिंदी (Hindi)</option>
+                  </select>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={!lessonSubject.trim() || !lessonTopic.trim() || isGeneratingLesson}
+                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl font-bold shadow-sm transition flex items-center justify-center gap-1.5"
+                >
+                  <Bot size={14} />
+                  <span>{isGeneratingLesson ? 'Drafting Lesson...' : 'Generate Lesson Plan'}</span>
+                </button>
+              </form>
+            </div>
+
+            {/* Generated Plan Output */}
+            <div className="lg:col-span-2 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Generated Pedagogical Draft</h3>
+              {generatedLessonPlan ? (
+                <div className="space-y-4 text-xs">
+                  <div className="p-3.5 rounded-xl bg-indigo-50/70 border border-indigo-100 flex items-center justify-between">
+                    <div>
+                      <h4 className="font-bold text-indigo-950 text-sm">
+                        {generatedLessonPlan.topic} ({generatedLessonPlan.subject_name})
+                      </h4>
+                      <p className="text-[11px] text-indigo-700">
+                        {generatedLessonPlan.grade_level} • {generatedLessonPlan.duration_minutes} minutes • Language: {generatedLessonPlan.language.toUpperCase()}
+                      </p>
+                    </div>
+                    <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                      Ready for Faculty Review
+                    </span>
+                  </div>
+
+                  {/* Objectives */}
+                  <div className="space-y-1.5">
+                    <p className="font-bold text-slate-800">Learning Objectives:</p>
+                    <ul className="list-disc pl-5 space-y-1 text-slate-700">
+                      {generatedLessonPlan.objectives.map((obj: string, i: number) => (
+                        <li key={i}>{obj}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Timeline */}
+                  <div className="space-y-1.5">
+                    <p className="font-bold text-slate-800">Pacing & Timeline Breakdown:</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {generatedLessonPlan.timeline_sections.map((sec: any, i: number) => (
+                        <div key={i} className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 space-y-0.5">
+                          <span className="font-extrabold text-[10px] text-indigo-600 block">{sec.time}</span>
+                          <p className="font-bold text-slate-900">{sec.title}</p>
+                          <p className="text-slate-600 text-[11px]">{sec.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Homework & Activities */}
+                  <div className="p-3 rounded-xl bg-amber-50/60 border border-amber-100 text-amber-950 space-y-1">
+                    <p className="font-bold">Homework & Follow-up Exercise:</p>
+                    <p className="text-[11px]">{generatedLessonPlan.homework_suggestion}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-20 text-slate-400 text-xs">
+                  Fill in the subject and topic on the left to generate an AI pedagogical plan.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Parent Inquiries Inbox */}
+      {activeTab === 'parent_inquiries' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Parent Inquiries</h3>
+            <div className="space-y-2 max-h-[550px] overflow-y-auto">
+              {parentThreads.length === 0 ? (
+                <div className="text-center py-10 text-slate-400 text-xs">
+                  No parent inquiries logged at this time.
+                </div>
+              ) : (
+                parentThreads.map((t) => (
+                  <div
+                    key={t.id}
+                    onClick={() => setSelectedParentThread(t)}
+                    className={`p-3 rounded-xl border cursor-pointer transition text-xs space-y-1 ${
+                      selectedParentThread?.id === t.id
+                        ? 'border-indigo-600 bg-indigo-50/70 shadow-sm'
+                        : 'border-slate-200 bg-white hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-900 truncate max-w-[150px]">{t.subject}</span>
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-amber-100 text-amber-800">
+                        {t.status}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 capitalize">{t.category.replace('_', ' ')}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[550px]">
+            {selectedParentThread ? (
+              <>
+                <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 rounded-t-2xl">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">{selectedParentThread.subject}</h3>
+                    <p className="text-xs text-slate-500 capitalize">{selectedParentThread.category.replace('_', ' ')}</p>
+                  </div>
+                  {selectedParentThread.status !== 'resolved' && (
+                    <button
+                      onClick={() => handleResolveThread(selectedParentThread.id)}
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1"
+                    >
+                      <Check size={13} /> Mark Resolved
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex-1 p-4 overflow-y-auto space-y-3">
+                  {selectedParentThread.messages.map((m) => (
+                    <div key={m.id} className="p-3 rounded-xl border text-xs space-y-1 bg-slate-50">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold capitalize">{m.sender_role}:</span>
+                        <span className="text-[10px] text-slate-400">
+                          {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <p className="text-slate-800 text-[13px]">{m.content}</p>
+                      {teacherTranslatedMap[m.id] && (
+                        <div className="p-2 rounded bg-indigo-50 border border-indigo-100 text-indigo-900 text-xs">
+                          {teacherTranslatedMap[m.id]}
+                        </div>
+                      )}
+                      <button
+                        onClick={() => handleTeacherTranslate(m.id, m.content)}
+                        className="text-[10px] text-indigo-600 hover:underline flex items-center gap-1 pt-1"
+                      >
+                        <Globe size={11} /> Translate Message
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="p-3 border-t border-slate-100 bg-slate-50/50 rounded-b-2xl flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={teacherReplyText}
+                    onChange={(e) => setTeacherReplyText(e.target.value)}
+                    placeholder="Type educator reply to parent..."
+                    className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-900 outline-none"
+                  />
+                  <button
+                    onClick={handleSendTeacherReply}
+                    disabled={!teacherReplyText.trim() || isReplying}
+                    className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition flex items-center gap-1"
+                  >
+                    <Send size={13} />
+                    <span>Send Reply</span>
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-center h-full text-slate-400 text-xs">
+                Select an inquiry from the left to view thread.
+              </div>
+            )}
           </div>
         </div>
       )}

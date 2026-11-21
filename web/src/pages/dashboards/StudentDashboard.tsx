@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { educationService } from '../../services/educationService';
+import { aiService, QuizQuestionItem } from '../../services/aiService';
+import { languageService } from '../../services/languageService';
 import {
   EnrolledClass,
   StudyMaterial,
@@ -29,12 +31,47 @@ import {
   ChevronRight,
   X,
   Play,
+  Sparkles,
+  Bot,
+  Send,
+  RefreshCw,
+  Globe,
+  Layers,
 } from 'lucide-react';
 
 export const StudentDashboard: React.FC = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'courses' | 'materials' | 'assignments' | 'quizzes' | 'attendance' | 'announcements'>('overview');
+  const [activeTab, setActiveTab] = useState<
+    'overview' | 'ai_companion' | 'courses' | 'materials' | 'assignments' | 'quizzes' | 'attendance' | 'announcements'
+  >('overview');
   const [isLoading, setIsLoading] = useState(true);
+
+  // AI Study Companion States
+  const [aiChatMessages, setAiChatMessages] = useState<Array<{
+    sender: 'user' | 'assistant';
+    content: string;
+    language: string;
+    sources?: Array<{ document_name: string; page?: number; excerpt?: string }>;
+  }>>([
+    {
+      sender: 'assistant',
+      content: 'Welcome! I am your EduVerse AI Study Companion. Ask any academic doubt in English, Telugu (తెలుగు), or Hindi (हिंदी). You can also generate practice quizzes or ask questions about your course materials!',
+      language: 'en',
+    },
+  ]);
+  const [aiInputQuery, setAiInputQuery] = useState('');
+  const [aiUseRag, setAiUseRag] = useState(true);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [aiSelectedLanguage, setAiSelectedLanguage] = useState<string>(languageService.getCurrentLanguage());
+
+  // Formative AI Quiz Generation
+  const [aiQuizSubject, setAiQuizSubject] = useState('');
+  const [aiQuizTopic, setAiQuizTopic] = useState('');
+  const [aiQuizDifficulty, setAiQuizDifficulty] = useState('medium');
+  const [generatedQuizQuestions, setGeneratedQuizQuestions] = useState<QuizQuestionItem[]>([]);
+  const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
+  const [practiceAnswers, setPracticeAnswers] = useState<Record<number, number>>({});
+  const [showPracticeScore, setShowPracticeScore] = useState(false);
 
   // Data states
   const [enrolledClasses, setEnrolledClasses] = useState<EnrolledClass[]>([]);
@@ -98,6 +135,68 @@ export const StudentDashboard: React.FC = () => {
       await educationService.downloadMaterial(mat.id, mat.original_file_name);
     } catch (err) {
       alert('Failed to download material. Please try again.');
+    }
+  };
+
+  const handleSendStudentAI = async () => {
+    if (!aiInputQuery.trim() || isAiLoading) return;
+    const query = aiInputQuery.trim();
+    setAiInputQuery('');
+    setAiChatMessages((prev) => [
+      ...prev,
+      { sender: 'user', content: query, language: aiSelectedLanguage },
+    ]);
+    setIsAiLoading(true);
+
+    try {
+      const res = await aiService.chatWithAI({
+        message: query,
+        language: aiSelectedLanguage,
+        use_rag: aiUseRag,
+      });
+
+      setAiChatMessages((prev) => [
+        ...prev,
+        {
+          sender: 'assistant',
+          content: res.content,
+          language: res.language,
+          sources: res.sources,
+        },
+      ]);
+    } catch (err: any) {
+      setAiChatMessages((prev) => [
+        ...prev,
+        {
+          sender: 'assistant',
+          content: err?.response?.data?.detail || 'AI Assistant momentarily unavailable.',
+          language: aiSelectedLanguage,
+        },
+      ]);
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
+  const handleGeneratePracticeQuiz = async () => {
+    if (!aiQuizSubject.trim() || !aiQuizTopic.trim() || isGeneratingQuiz) return;
+    setIsGeneratingQuiz(true);
+    setPracticeAnswers({});
+    setShowPracticeScore(false);
+
+    try {
+      const res = await aiService.generateQuiz({
+        subject_name: aiQuizSubject.trim(),
+        topic: aiQuizTopic.trim(),
+        difficulty: aiQuizDifficulty,
+        language: aiSelectedLanguage,
+        question_count: 5,
+      });
+      setGeneratedQuizQuestions(res.questions || []);
+    } catch (err: any) {
+      alert(err?.response?.data?.detail || 'Failed to generate practice quiz.');
+    } finally {
+      setIsGeneratingQuiz(false);
     }
   };
 
@@ -241,6 +340,7 @@ export const StudentDashboard: React.FC = () => {
       <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto">
         {[
           { id: 'overview', label: 'Overview' },
+          { id: 'ai_companion', label: 'AI Study Companion (RAG)' },
           { id: 'courses', label: `My Courses (${enrolledClasses.length})` },
           { id: 'materials', label: `Study Materials (${materials.length})` },
           { id: 'assignments', label: `Assignments (${assignments.length})` },
@@ -251,11 +351,10 @@ export const StudentDashboard: React.FC = () => {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition whitespace-nowrap ${
-              activeTab === tab.id
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition whitespace-nowrap ${activeTab === tab.id
                 ? 'bg-blue-600 text-white shadow-sm'
                 : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-            }`}
+              }`}
           >
             {tab.label}
           </button>
@@ -414,6 +513,240 @@ export const StudentDashboard: React.FC = () => {
                   <p className="text-[11px] text-slate-600 mt-1 line-clamp-2">{ann.content}</p>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab: AI Study Companion (RAG & Multilingual) */}
+      {activeTab === 'ai_companion' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left 2 Cols: Multilingual AI Chat with RAG Citations */}
+            <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[580px]">
+              {/* Header */}
+              <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 rounded-t-2xl">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center">
+                    <Bot size={17} />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-900">EduVerse AI Study Companion</h3>
+                    <p className="text-[10px] text-slate-500">Ask questions in English, తెలుగు, or हिंदी</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  {/* RAG Toggle */}
+                  <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={aiUseRag}
+                      onChange={(e) => setAiUseRag(e.target.checked)}
+                      className="rounded text-blue-600"
+                    />
+                    <span className="font-semibold text-[11px]">RAG Syllabus Grounding</span>
+                  </label>
+
+                  <select
+                    value={aiSelectedLanguage}
+                    onChange={(e) => setAiSelectedLanguage(e.target.value)}
+                    className="text-xs p-1.5 rounded-lg border border-slate-200 bg-white font-medium"
+                  >
+                    <option value="en">English</option>
+                    <option value="te">తెలుగు (Telugu)</option>
+                    <option value="hi">हिंदी (Hindi)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Chat Messages */}
+              <div className="flex-1 p-4 overflow-y-auto space-y-3">
+                {aiChatMessages.map((msg, idx) => (
+                  <div
+                    key={idx}
+                    className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div
+                      className={`max-w-[85%] rounded-2xl p-3.5 text-xs shadow-sm ${msg.sender === 'user'
+                          ? 'bg-blue-600 text-white rounded-br-none'
+                          : 'bg-slate-50 border border-slate-200 text-slate-800 rounded-bl-none'
+                        }`}
+                    >
+                      <p className="font-bold text-[10px] mb-1 opacity-75">
+                        {msg.sender === 'user' ? 'You' : 'EduVerse AI Tutor'}
+                      </p>
+                      <p className="whitespace-pre-line leading-relaxed text-[13px]">{msg.content}</p>
+
+                      {/* Source Citations */}
+                      {msg.sources && msg.sources.length > 0 && (
+                        <div className="mt-2.5 pt-2 border-t border-slate-200/60 space-y-1">
+                          <p className="text-[10px] font-bold text-blue-700 flex items-center gap-1">
+                            <Layers size={11} /> Verified Sources:
+                          </p>
+                          {msg.sources.map((s, sIdx) => (
+                            <div key={sIdx} className="text-[10px] text-slate-600 bg-white/70 p-1.5 rounded-lg border border-slate-200">
+                              <strong>{s.document_name}</strong> (Page {s.page || 1})
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                {isAiLoading && (
+                  <div className="flex justify-start">
+                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-slate-500 text-xs flex items-center gap-2">
+                      <RefreshCw size={14} className="animate-spin text-blue-600" />
+                      <span>Formulating grounded response...</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Input */}
+              <div className="p-3 border-t border-slate-100 bg-slate-50/50 rounded-b-2xl">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleSendStudentAI();
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <input
+                    type="text"
+                    value={aiInputQuery}
+                    onChange={(e) => setAiInputQuery(e.target.value)}
+                    placeholder={
+                      aiSelectedLanguage === 'te'
+                        ? 'మీ సందేహాన్ని ఇక్కడ అడగండి (ఉదా: కిరణజన్య సంయోగక్రియ గురించి వివరించండి)...'
+                        : aiSelectedLanguage === 'hi'
+                          ? 'अपना प्रश्न यहाँ पूछें (उदा: प्रकाश संश्लेषण को आसान भाषा में समझाइए)...'
+                          : 'Ask your academic doubt or request concept explanation...'
+                    }
+                    className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-900 outline-none"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!aiInputQuery.trim() || isAiLoading}
+                    className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition flex items-center gap-1"
+                  >
+                    <Send size={13} />
+                    <span>Send</span>
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            {/* Right 1 Col: AI Practice Quiz Generator */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+              <div>
+                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <Sparkles size={14} className="text-amber-500" />
+                  <span>Instant AI Quiz Generator</span>
+                </h3>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Generate instant 5-question practice sets to test your mastery.
+                </p>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <div>
+                  <label className="block font-semibold mb-1">Subject</label>
+                  <input
+                    type="text"
+                    value={aiQuizSubject}
+                    onChange={(e) => setAiQuizSubject(e.target.value)}
+                    placeholder="e.g. Biology, Physics, Calculus"
+                    className="w-full p-2.5 rounded-xl border border-slate-200"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold mb-1">Topic</label>
+                  <input
+                    type="text"
+                    value={aiQuizTopic}
+                    onChange={(e) => setAiQuizTopic(e.target.value)}
+                    placeholder="e.g. Photosynthesis, Newton's Laws"
+                    className="w-full p-2.5 rounded-xl border border-slate-200"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold mb-1">Difficulty</label>
+                  <select
+                    value={aiQuizDifficulty}
+                    onChange={(e) => setAiQuizDifficulty(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-slate-200"
+                  >
+                    <option value="easy">Easy (Concept Basics)</option>
+                    <option value="medium">Medium (Standard Exam)</option>
+                    <option value="hard">Hard (Application & Analysis)</option>
+                  </select>
+                </div>
+
+                <button
+                  onClick={handleGeneratePracticeQuiz}
+                  disabled={!aiQuizSubject.trim() || !aiQuizTopic.trim() || isGeneratingQuiz}
+                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl font-bold shadow-sm transition flex items-center justify-center gap-1.5"
+                >
+                  <Sparkles size={14} />
+                  <span>{isGeneratingQuiz ? 'Authoring Questions...' : 'Generate Practice Set'}</span>
+                </button>
+              </div>
+
+              {/* Generated Practice Questions */}
+              {generatedQuizQuestions.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-slate-100 space-y-4 max-h-[350px] overflow-y-auto">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs text-slate-800">Practice Questions ({generatedQuizQuestions.length})</span>
+                    {!showPracticeScore && (
+                      <button
+                        onClick={() => setShowPracticeScore(true)}
+                        className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded"
+                      >
+                        Check Answers
+                      </button>
+                    )}
+                  </div>
+
+                  {generatedQuizQuestions.map((q, qIdx) => (
+                    <div key={qIdx} className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs space-y-2">
+                      <p className="font-bold text-slate-800">Q{qIdx + 1}: {q.question_text}</p>
+                      <div className="space-y-1">
+                        {q.options.map((opt, optIdx) => {
+                          const isPicked = practiceAnswers[qIdx] === optIdx;
+                          const isCorrect = q.correct_option_index === optIdx;
+                          return (
+                            <button
+                              key={optIdx}
+                              onClick={() => setPracticeAnswers((prev) => ({ ...prev, [qIdx]: optIdx }))}
+                              className={`w-full text-left p-2 rounded-lg text-[11px] transition border ${showPracticeScore && isCorrect
+                                  ? 'bg-emerald-100 border-emerald-300 text-emerald-900 font-bold'
+                                  : showPracticeScore && isPicked && !isCorrect
+                                    ? 'bg-red-100 border-red-300 text-red-900'
+                                    : isPicked
+                                      ? 'bg-indigo-100 border-indigo-300 text-indigo-900 font-semibold'
+                                      : 'bg-white border-slate-200 hover:bg-slate-100'
+                                }`}
+                            >
+                              {opt}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {showPracticeScore && q.explanation && (
+                        <p className="text-[10px] text-emerald-700 italic bg-emerald-50 p-1.5 rounded">
+                          <strong>Explanation:</strong> {q.explanation}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -628,13 +961,12 @@ export const StudentDashboard: React.FC = () => {
                     <td className="py-2.5 px-3 text-slate-700">{rec.session_title}</td>
                     <td className="py-2.5 px-3">
                       <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          rec.status === 'present'
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${rec.status === 'present'
                             ? 'bg-emerald-50 text-emerald-700'
                             : rec.status === 'late'
-                            ? 'bg-amber-50 text-amber-700'
-                            : 'bg-red-50 text-red-700'
-                        }`}
+                              ? 'bg-amber-50 text-amber-700'
+                              : 'bg-red-50 text-red-700'
+                          }`}
                       >
                         {rec.status.toUpperCase()}
                       </span>
@@ -806,11 +1138,10 @@ export const StudentDashboard: React.FC = () => {
                         {q.options.map((opt) => (
                           <label
                             key={opt.id}
-                            className={`flex items-center gap-3 p-3 rounded-xl border text-xs cursor-pointer transition ${
-                              quizAnswers[q.id] === opt.id
+                            className={`flex items-center gap-3 p-3 rounded-xl border text-xs cursor-pointer transition ${quizAnswers[q.id] === opt.id
                                 ? 'bg-blue-50 border-blue-500 font-semibold text-blue-900'
                                 : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
-                            }`}
+                              }`}
                           >
                             <input
                               type="radio"

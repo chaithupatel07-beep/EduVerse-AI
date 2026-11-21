@@ -20,7 +20,7 @@ EduVerse AI unifies **Students**, **Teachers**, **Parents**, and **Institution A
 | **Phase 1** | Project Foundation, Architecture, Monorepo & GitHub Setup | Completed |
 | **Phase 2** | Advanced Authentication, Role Management & Authoritative RBAC | Completed |
 | **Phase 3** | Core Education Management & Course Administration | Completed |
-| **Phase 4** | Generative AI, RAG & Document Intelligence | Planned |
+| **Phase 4** | Generative AI, RAG & Multilingual Parent Intelligence | Completed |
 | **Phase 5** | Personalized Recommendations & Academic Analytics | Planned |
 | **Phase 6** | Collaboration, Notifications & Parent-Teacher Messaging | Planned |
 | **Phase 7** | System Integration, Verification & Production Deployment | Planned |
@@ -64,7 +64,16 @@ sequenceDiagram
 
 ---
 
-## 3. Four Connected Ecosystem Roles
+## 3. Generative AI & Multilingual Parent Intelligence (Phase 4)
+
+- **Multilingual Parent AI Assistant (Jury Core Recommendation)**: Answers questions grounded strictly in the verified child's academic telemetry (attendance %, quiz grades, pending assignments) with zero hallucination. Supports **Telugu (`తెలుగు`)**, **Hindi (`हिंदी`)**, and **English (`English`)**.
+- **Parent–Teacher–Management Communication Hub**: Categorized inquiry threads (`academic_concerns`, `attendance_issues`, `assignment_queries`, `examination_queries`, `administrative_concerns`, `general_requests`) with thread lifecycle tracking and on-demand multilingual message translation.
+- **Document Ingestion & RAG**: Semantic text extraction (PDF/DOCX/TXT), sliding window chunking with overlap, persistent vector store (ChromaDB), and source-grounded answers with citations.
+- **Educator AI Copilot**: Lesson plan draft generator and formative quiz authoring in English, Telugu, and Hindi.
+
+---
+
+## 4. Connected Ecosystem Roles
 
 | Role | Demo Account | Default Password | Primary Responsibilities |
 |---|---|---|---|

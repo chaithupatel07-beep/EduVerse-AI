@@ -4,10 +4,10 @@
 EduVerse AI maintains an automated backend test suite using `pytest` and `httpx.AsyncClient` with an isolated SQLite async test database, testing health, authentication, role-based access control, parent-student relationships, and all Phase 3 academic management systems.
 
 - **Framework**: `pytest 8.3.4`, `pytest-asyncio 0.25.0`
-- **Total Tests**: 26
-- **Passed**: 26 (100%)
+- **Total Tests**: 31
+- **Passed**: 31 (100%)
 - **Failed**: 0
-- **Duration**: ~16.4 seconds
+- **Duration**: ~24.9 seconds
 
 ---
 
@@ -73,6 +73,13 @@ EduVerse AI maintains an automated backend test suite using `pytest` and `httpx.
 
 #### `test_phase3_isolation.py`
 - Tests multi-tenant isolation: ensures students and faculty from Institution A cannot query, read, or modify classrooms, materials, or student records belonging to Institution B.
+
+### 2.6 Phase 4 Generative AI, RAG & Parent Multilingual Intelligence (`test_phase4_ai.py`)
+- `test_ai_language_preference`: Tests GET and POST for user language preferences across English (`en`), Telugu (`te`), and Hindi (`hi`).
+- `test_ai_quiz_and_lesson_plan_generation`: Tests teacher AI copilot generation of structured 4-option MCQs and detailed pedagogical lesson plans.
+- `test_parent_ai_unlinked_child_forbidden`: Verifies strict authorization enforcement; parents attempting to query telemetry of an unlinked student receive HTTP 403 Forbidden.
+- `test_parent_ai_verified_child_telemetry`: Verifies parent AI chat grounding in verified student telemetry (attendance rate, quiz averages, pending assignments) without hallucination across English, Telugu, and Hindi.
+- `test_communication_thread_lifecycle_and_translation`: Validates creation of categorized parent communication threads, reply exchanges, and real-time on-demand translation between languages.
 
 ---
 
