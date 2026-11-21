@@ -16,7 +16,15 @@ import {
   HeartHandshake,
   Activity,
   Layers,
+  LucideIcon,
 } from 'lucide-react';
+
+interface NavItem {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  badge?: string;
+}
 
 interface SidebarProps {
   currentView: string;
@@ -30,7 +38,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, isOpe
 
   if (!user) return null;
 
-  const roleNavItems = {
+  const roleNavItems: Record<string, NavItem[]> = {
     student: [
       { id: 'foundation', label: 'Ecosystem Overview', icon: Layers },
       { id: 'dashboard', label: 'Student Dashboard', icon: LayoutDashboard },
