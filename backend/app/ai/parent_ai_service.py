@@ -84,7 +84,7 @@ class ParentAIService:
         stmt_enroll = select(ClassEnrollment).where(ClassEnrollment.student_id == student_id)
         res_enroll = await db.execute(stmt_enroll)
         enrollments = res_enroll.scalars().all()
-        enrolled_class_ids = [e.class_room_id for e in enrollments]
+        enrolled_class_ids = [e.class_id for e in enrollments]
 
         # Assignments for enrolled classes/institution
         stmt_assign = select(Assignment).where(Assignment.institution_id == student.institution_id)
@@ -98,18 +98,26 @@ class ParentAIService:
                     "id": a.id,
                     "title": a.title,
                     "due_date": str(a.due_date) if a.due_date else "Not set",
-                    "max_points": a.max_points
+                    "max_points": getattr(a, "max_marks", getattr(a, "max_points", 100))
                 })
 
         # Graded assignments average
-        graded_scores = [s.grade for s in submissions if s.grade is not None]
+        graded_scores = [
+            getattr(s, "marks_obtained", getattr(s, "grade", None))
+            for s in submissions
+            if getattr(s, "marks_obtained", getattr(s, "grade", None)) is not None
+        ]
         avg_assignment_grade = round(sum(graded_scores) / len(graded_scores), 1) if graded_scores else 85.0
 
         # 4. Quiz stats
         stmt_quiz = select(QuizAttempt).where(QuizAttempt.student_id == student_id)
         res_quiz = await db.execute(stmt_quiz)
         attempts = res_quiz.scalars().all()
-        quiz_pcts = [a.percentage for a in attempts if a.percentage is not None]
+        quiz_pcts = [
+            getattr(a, "percentage", getattr(a, "score", None))
+            for a in attempts
+            if getattr(a, "percentage", getattr(a, "score", None)) is not None
+        ]
         avg_quiz_pct = round(sum(quiz_pcts) / len(quiz_pcts), 1) if quiz_pcts else 88.0
 
         # 5. Knowledge gaps & Topic mastery (Phase 5)
@@ -128,7 +136,7 @@ class ParentAIService:
         stmt_tm = select(TopicMasteryRecord).where(TopicMasteryRecord.student_id == student_id)
         res_tm = await db.execute(stmt_tm)
         tms = res_tm.scalars().all()
-        strong_topics = [tm.topic_name for tm in tms if tm.mastery_level == "advanced"]
+        strong_topics = [tm.topic_name for tm in tms if getattr(tm, "mastery_level", None) in ("advanced", "proficient")]
         if not strong_topics:
             strong_topics = ["Calculus Integration", "Algorithm Design"]
 
