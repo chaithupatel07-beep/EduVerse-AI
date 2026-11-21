@@ -773,35 +773,75 @@ export const StudentDashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Right Col: ML Performance Trajectory Card */}
+            {/* Right Col: ML Performance Trajectory Card with Transparent Fallback */}
             <div className="bg-gradient-to-b from-indigo-900 to-slate-900 text-white p-5 rounded-2xl shadow-sm border border-indigo-800 flex flex-col justify-between space-y-4">
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-300">
-                    ML Predictive Trajectory
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-300">
+                      Predictive Trajectory
+                    </span>
+                    {prediction?.is_rule_based ? (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                        Rule-Based Heuristic
+                      </span>
+                    ) : (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">
+                        ML Regressor
+                      </span>
+                    )}
+                  </div>
                   <span className="px-2 py-0.5 rounded-full bg-indigo-500/30 text-indigo-200 text-[10px] font-bold">
-                    {prediction ? `${(prediction.confidence_score * 100).toFixed(0)}% Confidence` : 'Ridge ML active'}
+                    {prediction?.data_sufficiency === 'no_data'
+                      ? 'Awaiting Data'
+                      : prediction?.confidence_score
+                      ? `${(prediction.confidence_score * 100).toFixed(0)}% Confidence`
+                      : 'Provisional'}
                   </span>
                 </div>
+
                 <h4 className="text-xs text-slate-300">Projected Final Academic Score</h4>
                 <div className="mt-1 flex items-baseline gap-2">
-                  <span className="text-3xl font-black text-white">
-                    {prediction ? `${prediction.predicted_success_score.toFixed(1)}%` : '91.8%'}
-                  </span>
-                  <span className="text-xs text-indigo-300">
-                    {prediction?.predicted_gpa_range
-                      ? `(${prediction.predicted_gpa_range})`
-                      : '(GPA: 3.6 - 4.0)'}
-                  </span>
+                  {prediction?.data_sufficiency === 'no_data' ? (
+                    <span className="text-2xl font-bold text-slate-400">
+                      Awaiting Data
+                    </span>
+                  ) : (
+                    <>
+                      <span className="text-3xl font-black text-white">
+                        {prediction ? `${prediction.predicted_success_score.toFixed(1)}%` : '—'}
+                      </span>
+                      <span className="text-xs text-indigo-300">
+                        {prediction?.predicted_gpa_range ? `(${prediction.predicted_gpa_range})` : ''}
+                      </span>
+                    </>
+                  )}
                 </div>
+
+                {/* Transparency Notice */}
+                {prediction?.transparency_notice && (
+                  <div className="mt-2.5 p-2.5 rounded-xl bg-white/10 border border-white/15 text-[11px] text-slate-200 leading-snug">
+                    <p className="font-semibold text-amber-300 text-[10px] mb-0.5 flex items-center gap-1">
+                      <AlertCircle size={11} /> Model Methodology & Transparency:
+                    </p>
+                    <p>{prediction.transparency_notice}</p>
+                  </div>
+                )}
               </div>
 
-              {/* Contributing Factors */}
-              <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-xs space-y-1.5">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-300">
-                  Key Contributing Predictors
-                </p>
+              {/* Data Sufficiency / Key Contributing Factors */}
+              <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-300">
+                    {prediction?.is_rule_based ? 'Active Assessment Weights' : 'Key Contributing Predictors'}
+                  </p>
+                  {prediction?.data_points_count && (
+                    <span className="text-[10px] text-slate-400">
+                      {prediction.data_points_count.quizzes}Q • {prediction.data_points_count.assignments}A • {prediction.data_points_count.attendance_records}S
+                    </span>
+                  )}
+                </div>
+
                 {prediction?.contributing_factors && Object.keys(prediction.contributing_factors).length > 0 ? (
                   Object.entries(prediction.contributing_factors).map(([factor, weight], i: number) => (
                     <div key={i} className="flex justify-between text-[11px]">
@@ -812,16 +852,23 @@ export const StudentDashboard: React.FC = () => {
                     </div>
                   ))
                 ) : (
-                  <>
-                    <div className="flex justify-between text-[11px]">
-                      <span className="text-slate-300">Attendance Consistency</span>
-                      <span className="text-emerald-400 font-bold">+35%</span>
-                    </div>
-                    <div className="flex justify-between text-[11px]">
-                      <span className="text-slate-300">Assignment Completion</span>
-                      <span className="text-emerald-400 font-bold">+28%</span>
-                    </div>
-                  </>
+                  <p className="text-[11px] text-slate-400 italic">
+                    Complete quizzes and assignments to establish factor attributions.
+                  </p>
+                )}
+
+                {/* Progress toward unlocking ML model */}
+                {prediction?.is_rule_based && prediction?.missing_requirements && prediction.missing_requirements.length > 0 && (
+                  <div className="pt-2 border-t border-white/10 space-y-1">
+                    <p className="text-[10px] font-bold text-indigo-300 uppercase tracking-wider">
+                      To Unlock Statistical ML Model:
+                    </p>
+                    {prediction.missing_requirements.map((req, rIdx) => (
+                      <p key={rIdx} className="text-[10px] text-slate-300 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" /> {req}
+                      </p>
+                    ))}
+                  </div>
                 )}
               </div>
 

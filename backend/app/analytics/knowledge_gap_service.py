@@ -106,22 +106,16 @@ class KnowledgeGapService:
                     topic_stats[key]["correct_answers"] += 1
                 topic_stats[key]["attempts_count"] += 1
 
-        # If student has no quiz attempts yet, seed standard baseline topics for their subjects
+        # If student has no quiz attempts yet, seed transparent baseline topic placeholders marked as insufficient_assessment_data
         if not topic_stats and subjects:
-            default_topics = [
-                ("Calculus Fundamentals", 78.0, 5, 4),
-                ("Linear Algebra & Matrices", 42.0, 6, 2),  # Knowledge gap
-                ("Vector Spaces & Transformations", 88.0, 5, 5),
-            ]
-            for t_name, pct, tot, corr in default_topics:
-                s_id = subjects[0].id
-                k = f"{s_id}::{t_name}"
+            for s in subjects[:2]:
+                k = f"{s.id}::{s.title}"
                 topic_stats[k] = {
-                    "subject_id": s_id,
-                    "topic_name": t_name,
-                    "total_questions": tot,
-                    "correct_answers": corr,
-                    "attempts_count": 2,
+                    "subject_id": s.id,
+                    "topic_name": s.title,
+                    "total_questions": 0,
+                    "correct_answers": 0,
+                    "attempts_count": 0,
                     "last_date": datetime.now(timezone.utc),
                 }
 

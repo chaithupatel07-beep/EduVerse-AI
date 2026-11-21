@@ -1066,27 +1066,37 @@ export const ParentDashboard: React.FC = () => {
                 {selectedChild?.full_name}'s Progress Snapshot
               </h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Your child is actively progressing in their enrolled semester curriculum. Attendance rate is{' '}
-                <strong className="text-emerald-600 font-bold">
-                  {childProgress?.overall_attendance_rate ?? 95}%
-                </strong>
-                . Cumulative GPA / assessment performance is{' '}
-                <strong className="text-indigo-600 font-bold">
-                  {childProgress?.overall_academic_score ?? 92.5}%
-                </strong>
-                .
+                {childProgress ? (
+                  <>
+                    Your child is actively progressing in their enrolled semester curriculum. Attendance rate is{' '}
+                    <strong className="text-emerald-600 font-bold">
+                      {childProgress.overall_attendance_rate}%
+                    </strong>
+                    . Cumulative GPA / assessment performance is{' '}
+                    <strong className="text-indigo-600 font-bold">
+                      {childProgress.overall_academic_score}%
+                    </strong>
+                    .
+                  </>
+                ) : (
+                  <>
+                    Academic records are currently being compiled. Once initial quiz attempts and attendance are logged by faculty, verified performance metrics will display here.
+                  </>
+                )}
               </p>
 
               <div className="grid grid-cols-2 gap-3 pt-2">
                 <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
                   <p className="text-[11px] text-slate-500 font-medium">Assignment Completion</p>
                   <p className="text-lg font-bold text-slate-800">
-                    {childProgress?.assignment_completion_rate ?? 100}%
+                    {childProgress?.assignment_completion_rate != null ? `${childProgress.assignment_completion_rate}%` : '—'}
                   </p>
                 </div>
                 <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
                   <p className="text-[11px] text-slate-500 font-medium">Academic Status</p>
-                  <p className="text-lg font-bold text-emerald-600">Good Standing</p>
+                  <p className="text-lg font-bold text-emerald-600">
+                    {childProgress ? 'Good Standing' : 'Active Student'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -1176,7 +1186,7 @@ export const ParentDashboard: React.FC = () => {
               <p className="text-xs text-slate-500">Official log of classes attended</p>
             </div>
             <span className="text-2xl font-black text-emerald-600">
-              {childAttendance?.attendance_percentage ?? 95}%
+              {childAttendance?.attendance_percentage != null ? `${childAttendance.attendance_percentage}%` : '—'}
             </span>
           </div>
 

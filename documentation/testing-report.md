@@ -89,10 +89,12 @@ EduVerse AI maintains an automated backend test suite using `pytest` and `httpx.
 - `test_adaptive_learning_session_and_calibration`: Tests dynamic adaptive question generation and mastery difficulty progression upon attempt submission.
 - `test_student_performance_analytics_trends`: Tests longitudinal student analytics over quizzes and assignments.
 - `test_class_learning_intelligence_and_at_risk_radar`: Tests teacher class analytics, average scores, at-risk flags, and shared class knowledge gaps.
-- `test_ml_prediction_service_and_telemetry`: Tests scikit-learn regression pipeline, factor attribution weights, and heuristic fallback.
+- `test_ml_prediction_service_and_telemetry`: Tests scikit-learn regression pipeline, factor attribution weights, and model metadata.
+- `test_transparent_rule_based_fallback_integrity`: Verifies that students with insufficient/zero historical records transparently engage the rule-based alternative with explicit uncertainty bounds instead of fabricating an ML score.
 
 ---
 
 ## 3. Frontend & Mobile Verification
 - **Web App (`web/`)**: Built and verified with `npm run build` (`tsc && vite build`) with 0 errors and all role dashboards fully functional.
-- **Mobile App (`mobile/`)**: Type interfaces aligned with backend models, API service connected, and all role screens wired for Phase 3.
+- **Mobile App (`mobile/`)**: Type interfaces aligned with backend models, API service connected, and all role screens wired.
+- **Full Test Suite Status**: **40 / 40 passing tests** across all modules.

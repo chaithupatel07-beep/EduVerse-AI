@@ -24,6 +24,7 @@ import {
   X,
   CheckCircle2,
   ShieldAlert,
+  ShieldCheck,
   Database,
   Sparkles,
   RefreshCw,
@@ -551,6 +552,18 @@ export const AdminDashboard: React.FC = () => {
                 <p className="text-[10px] text-slate-400 uppercase font-bold">Safe Fallback Engine</p>
                 <p className="text-sm font-extrabold text-emerald-400 mt-1">Rule Heuristic Active</p>
                 <p className="text-[10px] text-slate-400">Ensures non-null inference on small N</p>
+              </div>
+            </div>
+
+            {/* Academic Integrity & Model Governance Policy */}
+            <div className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-400/20 text-xs text-indigo-100 flex items-start gap-3">
+              <ShieldCheck size={20} className="text-emerald-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-white text-xs">Hackathon Academic Integrity & Transparency Protocol</p>
+                <p className="text-[11px] text-indigo-200 mt-0.5 leading-relaxed">
+                  To prevent deceptive AI claims, predictive performance is strictly calibrated against real academic data.
+                  If a student has fewer than <strong>3 quizzes</strong>, <strong>2 assignments</strong>, or <strong>3 attendance records</strong>, EduVerse AI transparently disables statistical ML regression and presents an explicit rule-based heuristic with honest uncertainty intervals.
+                </p>
               </div>
             </div>
           </div>

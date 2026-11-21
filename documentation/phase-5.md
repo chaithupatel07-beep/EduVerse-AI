@@ -78,18 +78,42 @@ Each detected gap outputs:
 - **Root Cause Analysis**: Explaining conceptual friction points (e.g., misapplication of formulas, low homework submission consistency).
 - **Remedial Guidance**: Direct actionable directives for the learner.
 
-### 3.3. Scikit-Learn Predictive ML Pipeline (`app/ml/`)
-- **Features Engineered**:
-  - `quiz_average` (0–100)
-  - `assignment_completion_rate` (0–100)
-  - `attendance_rate` (0–100)
-  - `quizzes_attempted` (count)
-  - `streak_days` (count)
-  - `pace_numeric` (0.8, 1.0, 1.2)
-- **Model Training**: `Ridge(alpha=1.0)` regularized linear regression or `RandomForestRegressor(n_estimators=50, max_depth=5)`.
-- **Validation**: 80/20 train/test split computing $R^2$ score and RMSE.
-- **Heuristic Fallback Engine**: If training samples $N < 5$, a safe rule-based baseline ensures continuous non-null inference for newly enrolled cohorts.
-- **Explainability**: Quantifies factor attributions (+35% Attendance, +30% Quiz Consistency, +25% Assignment Completion).
+### 3.3. Scikit-Learn Predictive ML Pipeline & Transparent Rule-Based Architecture (`app/ml/`)
+To satisfy rigorous academic integrity standards essential for hackathon presentation, EduVerse AI avoids pretending that an ML model is accurate when historical data is limited. The system implements a transparent 3-tier architecture:
+
+```
+                                  ┌─────────────────────────────┐
+                                  │ Actual Academic Data Points │
+                                  │ (Quizzes, Assignments, Att) │
+                                  └──────────────┬──────────────┘
+                                                 │
+                   ┌─────────────────────────────┼─────────────────────────────┐
+                   │                             │                             │
+                   ▼                             ▼                             ▼
+       [Quizzes = 0, Subs = 0]       [Quizzes < 3 or Subs < 2]     [Quizzes >= 3 & Subs >= 2]
+         TIER 1: NO DATA BASELINE      TIER 2: TRANSPARENT RULE-BASED  TIER 3: TRAINED SCIKIT-LEARN
+       - Status: "Awaiting Data"     - Methodology: "rule_based"    - Methodology: "ml_regression"
+       - Score: None / 0.0           - Score: Weighted actual data  - Model: Ridge / RandomForest
+       - Confidence: 0.0             - Confidence: 0.40 - 0.55      - Confidence: 0.80 - 0.92
+       - Notice: "Take quizzes to    - Transparency Notice: Explains - Full Feature Attributions
+         establish baseline"           sample size & exact metrics   - Actionable Interventions
+```
+
+- **Tier 1 (No Data Baseline)**:
+  - Trigger: Student has 0 quizzes, 0 assignments, and 0 attendance records.
+  - Transparent Display: "Awaiting Academic Data" with clear checklist of prerequisites.
+  - No synthetic scores or hallucinated factor weights are generated.
+- **Tier 2 (Transparent Rule-Based Heuristic)**:
+  - Trigger: Student has active records, but below the statistical regression threshold (`< 3 quizzes` or `< 2 evaluated assignments`).
+  - Calculation: Direct proportional weighting of actual available data points (`quiz_performance: 45%`, `assignment_performance: 35%`, `attendance_rate: 20%`), normalized to present components.
+  - Honest Uncertainty: Confidence set to provisional (0.35–0.55), with explicit banner: *"Provisional Rule-Based Alternative: Statistical ML regression requires minimum 3 quizzes and 2 assignments to prevent overfitting. Displaying transparent rule-based heuristic calculated directly from available records."*
+  - Missing Requirements Checklist: Displays exact remaining milestones needed to unlock the statistical ML model (e.g., `Need 2 more quiz attempt(s)`).
+- **Tier 3 (Statistical Scikit-Learn Regression)**:
+  - Trigger: Sufficient representative records (`>= 3 quizzes`, `>= 2 assignments`, `>= 3 attendance records`).
+  - Features Engineered: `quiz_average`, `assignment_completion_rate`, `attendance_rate`, `quizzes_attempted`, `streak_days`, `pace_numeric`.
+  - Model Training: `Ridge(alpha=1.0)` regularized linear regression or `RandomForestRegressor(n_estimators=50, max_depth=5)`.
+  - Validation: 80/20 train/test split computing $R^2$ score and RMSE.
+  - Explainability: Quantifies true factor attributions (+35% Attendance, +30% Quiz Consistency, +25% Assignment Completion).
 
 ### 3.4. Dynamic Study Plans & Resource Recommendations
 - **Auto-Plan Generator**: Formulates a structured 7-day study schedule targeting active knowledge gaps with tasks categorized as `reading`, `practice_quiz`, or `revision`.

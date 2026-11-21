@@ -1,7 +1,7 @@
 """
 EduVerse AI - Academic Performance Analytics Service (Phase 5)
 Provides student performance trends, teacher class-level analytics,
-and institutional academic reporting.
+and institutional academic reporting strictly grounded in actual database records.
 """
 import logging
 from typing import Dict, Any, List, Optional
@@ -69,7 +69,7 @@ class PerformanceAnalyticsService:
         res_att = await db.execute(stmt_att)
         atts = res_att.scalars().all()
         present = sum(1 for a in atts if a.status in ("present", "late"))
-        att_rate = round(present / len(atts) * 100.0, 1) if atts else 95.0
+        att_rate = round(present / len(atts) * 100.0, 1) if atts else 0.0
 
         return {
             "student_id": student_id,
@@ -115,33 +115,45 @@ class PerformanceAnalyticsService:
         stmt_q = select(QuizAttempt).where(QuizAttempt.student_id.in_(student_ids))
         res_q = await db.execute(stmt_q)
         attempts = res_q.scalars().all()
-        avg_quiz = round(sum(a.percentage for a in attempts) / len(attempts), 1) if attempts else 81.5
+        avg_quiz = round(sum(a.percentage for a in attempts) / len(attempts), 1) if attempts else 0.0
 
         # 3. Attendance for class
         stmt_att = select(AttendanceRecord).where(AttendanceRecord.student_id.in_(student_ids))
         res_att = await db.execute(stmt_att)
         records = res_att.scalars().all()
         present_cnt = sum(1 for r in records if r.status in ("present", "late"))
-        avg_att = round(present_cnt / len(records) * 100.0, 1) if records else 93.4
+        avg_att = round(present_cnt / len(records) * 100.0, 1) if records else 0.0
 
-        # 4. At-risk students (attendance < 75% or quiz < 60%)
+        # 4. At-risk students
         at_risk = []
         for s_id in student_ids:
             s_attempts = [a for a in attempts if a.student_id == s_id]
-            s_quiz_avg = sum(a.percentage for a in s_attempts) / len(s_attempts) if s_attempts else 75.0
+            s_quiz_avg = (sum(a.percentage for a in s_attempts) / len(s_attempts)) if s_attempts else None
             s_atts = [r for r in records if r.student_id == s_id]
-            s_att_rate = sum(1 for r in s_atts if r.status in ("present", "late")) / len(s_atts) * 100.0 if s_atts else 90.0
+            s_att_rate = (sum(1 for r in s_atts if r.status in ("present", "late")) / len(s_atts) * 100.0) if s_atts else None
 
-            if s_quiz_avg < 65.0 or s_att_rate < 80.0:
+            is_at_risk = False
+            concern = ""
+            if s_quiz_avg is not None and s_quiz_avg < 65.0:
+                is_at_risk = True
+                concern = "Low Quiz Performance"
+            elif s_att_rate is not None and s_att_rate < 80.0:
+                is_at_risk = True
+                concern = "Attendance Deficit"
+            elif s_quiz_avg is None and len(attempts) > 0:
+                is_at_risk = True
+                concern = "No Quizzes Attempted"
+
+            if is_at_risk:
                 stmt_u = select(User).where(User.id == s_id)
                 res_u = await db.execute(stmt_u)
                 u = res_u.scalar_one_or_none()
                 at_risk.append({
                     "student_id": s_id,
                     "student_name": u.full_name if u else "Student",
-                    "quiz_average": round(s_quiz_avg, 1),
-                    "attendance_rate": round(s_att_rate, 1),
-                    "primary_concern": "Low Quiz Performance" if s_quiz_avg < 65.0 else "Attendance Deficit",
+                    "quiz_average": round(s_quiz_avg, 1) if s_quiz_avg is not None else 0.0,
+                    "attendance_rate": round(s_att_rate, 1) if s_att_rate is not None else 0.0,
+                    "primary_concern": concern,
                 })
 
         # 5. Common topic learning gaps across class
@@ -207,24 +219,43 @@ class PerformanceAnalyticsService:
         res_tc = await db.execute(stmt_teachers)
         total_teachers = len(res_tc.scalars().all())
 
+        stmt_inst_quizzes = (
+            select(QuizAttempt)
+            .join(User, QuizAttempt.student_id == User.id)
+            .where(User.institution_id == institution_id)
+        )
+        res_iq = await db.execute(stmt_inst_quizzes)
+        inst_attempts = res_iq.scalars().all()
+        inst_avg_score = round(sum(a.percentage for a in inst_attempts) / len(inst_attempts), 1) if inst_attempts else 0.0
+
+        stmt_inst_att = (
+            select(AttendanceRecord)
+            .join(User, AttendanceRecord.student_id == User.id)
+            .where(User.institution_id == institution_id)
+        )
+        res_ia = await db.execute(stmt_inst_att)
+        inst_atts = res_ia.scalars().all()
+        inst_present = sum(1 for a in inst_atts if a.status in ("present", "late"))
+        inst_avg_att = round(inst_present / len(inst_atts) * 100.0, 1) if inst_atts else 0.0
+
         dept_breakdown = [
             {
                 "department_id": d.id,
                 "name": d.name,
                 "courses_count": len([c for c in courses if c.department_id == d.id]),
-                "average_performance": 84.5,
+                "average_performance": inst_avg_score,
             }
             for d in depts
         ]
 
         return {
             "institution_id": institution_id,
-            "total_students": total_students or 120,
-            "total_teachers": total_teachers or 15,
+            "total_students": total_students,
+            "total_teachers": total_teachers,
             "total_departments": len(depts),
             "total_courses": len(courses),
-            "institution_average_score": 83.2,
-            "institution_average_attendance": 94.1,
+            "institution_average_score": inst_avg_score,
+            "institution_average_attendance": inst_avg_att,
             "department_breakdown": dept_breakdown,
         }
 

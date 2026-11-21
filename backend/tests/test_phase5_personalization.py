@@ -145,7 +145,7 @@ async def test_adaptive_learning_session_workflow(client: AsyncClient, student_h
 @pytest.mark.asyncio
 async def test_machine_learning_prediction_and_model_status(client: AsyncClient, student_headers: dict, admin_headers: dict):
     """
-    Test ML model status inspection and explainable student performance prediction.
+    Test ML model status inspection and explainable student performance prediction with transparency metadata.
     """
     # 1. Model status
     res_status = await client.get("/api/v1/ml/model-status", headers=student_headers)
@@ -165,7 +165,51 @@ async def test_machine_learning_prediction_and_model_status(client: AsyncClient,
     assert "predicted_gpa_range" in pred_data
     assert "predicted_success_score" in pred_data
     assert "contributing_factors" in pred_data
+    assert "is_rule_based" in pred_data
+    assert "data_sufficiency" in pred_data
+    assert "methodology" in pred_data
+    assert "transparency_notice" in pred_data
     assert len(pred_data["suggested_interventions"]) > 0
+
+
+@pytest.mark.asyncio
+async def test_transparent_rule_based_fallback_integrity(client: AsyncClient, admin_headers: dict):
+    """
+    Test that when a student has insufficient/no academic data, the system transparently
+    switches to a rule-based alternative instead of fabricating an ML score.
+    """
+    # Register fresh student with 0 academic records
+    import uuid
+    uid = str(uuid.uuid4())[:8]
+    fresh_email = f"fresh_student_{uid}@example.com"
+    reg_res = await client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": fresh_email,
+            "password": "Password123!",
+            "full_name": "Fresh Test Student",
+            "role": "student",
+        },
+    )
+    assert reg_res.status_code == 201
+    new_student_id = reg_res.json()["data"]["user"]["id"]
+
+    # Request prediction as admin
+    res_pred = await client.get(f"/api/v1/ml/predictions/student/{new_student_id}", headers=admin_headers)
+    assert res_pred.status_code == 200
+    pred_data = res_pred.json()
+
+    # Must be transparently marked as rule-based and no_data
+    assert pred_data["is_rule_based"] is True
+    assert pred_data["data_sufficiency"] == "no_data"
+    assert pred_data["methodology"] == "no_data_baseline"
+    assert pred_data["predicted_gpa_range"] == "Awaiting Academic Data"
+    assert pred_data["confidence_score"] == 0.0
+    assert pred_data["data_points_count"]["quizzes"] == 0
+    assert pred_data["data_points_count"]["assignments"] == 0
+    assert len(pred_data["missing_requirements"]) == 3
+    assert "No academic activity" in pred_data["transparency_notice"]
+
 
 
 @pytest.mark.asyncio

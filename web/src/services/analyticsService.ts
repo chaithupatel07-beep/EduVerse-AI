@@ -63,6 +63,16 @@ export interface AcademicPrediction {
   confidence_score: number;
   contributing_factors: Record<string, number>;
   suggested_interventions: string[];
+  is_rule_based?: boolean;
+  data_sufficiency?: 'sufficient' | 'insufficient_data' | 'no_data';
+  methodology?: string;
+  transparency_notice?: string;
+  data_points_count?: {
+    quizzes: number;
+    assignments: number;
+    attendance_records: number;
+  };
+  missing_requirements?: string[];
   created_at: string;
 }
 

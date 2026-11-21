@@ -11,8 +11,8 @@ from sqlalchemy import select, and_, func
 
 from app.models.user import User
 from app.models.academic import Subject, Course, ClassEnrollment
-from app.models.quiz import QuizAttempt
-from app.models.assignment import AssignmentSubmission
+from app.models.quiz import Quiz, QuizAttempt
+from app.models.assignment import Assignment, AssignmentSubmission
 from app.models.attendance import AttendanceRecord
 from app.models.personalization import StudentLearningProfile, TopicMasteryRecord, KnowledgeGap
 
@@ -26,7 +26,7 @@ class LearningProfileService:
         student_id: str,
     ) -> Dict[str, Any]:
         """
-        Retrieves or dynamically recalculates a student's learning profile.
+        Retrieves or dynamically recalculates a student's learning profile strictly using actual records.
         """
         stmt_user = select(User).where(User.id == student_id)
         res_user = await db.execute(stmt_user)
@@ -41,28 +41,58 @@ class LearningProfileService:
 
         # 2. Gather raw academic metrics
         # Quizzes
-        stmt_q = select(QuizAttempt).where(QuizAttempt.student_id == student_id)
+        stmt_q = (
+            select(QuizAttempt)
+            .join(Quiz, QuizAttempt.quiz_id == Quiz.id, isouter=True)
+            .where(QuizAttempt.student_id == student_id)
+        )
         res_q = await db.execute(stmt_q)
         quizzes = res_q.scalars().all()
-        quiz_avg = round(sum(q.percentage for q in quizzes) / len(quizzes), 1) if quizzes else 82.0
+        quiz_avg = round(sum(q.percentage for q in quizzes) / len(quizzes), 1) if quizzes else 0.0
 
         # Assignments
-        stmt_subs = select(AssignmentSubmission).where(AssignmentSubmission.student_id == student_id)
+        stmt_subs = (
+            select(AssignmentSubmission)
+            .join(Assignment, AssignmentSubmission.assignment_id == Assignment.id, isouter=True)
+            .where(AssignmentSubmission.student_id == student_id)
+        )
         res_subs = await db.execute(stmt_subs)
         subs = res_subs.scalars().all()
         evaluated_subs = [s for s in subs if s.marks_obtained is not None]
-        assignment_avg = round(sum(s.marks_obtained for s in evaluated_subs) / len(evaluated_subs), 1) if evaluated_subs else 86.5
+        if evaluated_subs:
+            marks_pcts = []
+            for s in evaluated_subs:
+                if s.assignment and s.assignment.max_marks and s.assignment.max_marks > 0:
+                    marks_pcts.append((s.marks_obtained / s.assignment.max_marks) * 100.0)
+                else:
+                    marks_pcts.append(s.marks_obtained)
+            assignment_avg = round(sum(marks_pcts) / len(marks_pcts), 1)
+        else:
+            assignment_avg = 0.0
 
         # Attendance
         stmt_att = select(AttendanceRecord).where(AttendanceRecord.student_id == student_id)
         res_att = await db.execute(stmt_att)
         atts = res_att.scalars().all()
         present = sum(1 for a in atts if a.status in ("present", "late"))
-        att_rate = round(present / len(atts) * 100.0, 1) if atts else 96.0
+        att_rate = round(present / len(atts) * 100.0, 1) if atts else 0.0
 
-        # Overall GPA calculation (4.0 scale)
-        composite_score = (quiz_avg * 0.45) + (assignment_avg * 0.45) + (att_rate * 0.10)
-        overall_gpa = round(composite_score / 25.0, 2)  # Scale to 4.0
+        # Overall GPA calculation (4.0 scale) based on actual available data
+        has_any_data = bool(quizzes or evaluated_subs or atts)
+        if has_any_data:
+            components = []
+            if quizzes:
+                components.append((quiz_avg, 0.45))
+            if evaluated_subs:
+                components.append((assignment_avg, 0.45))
+            if atts:
+                components.append((att_rate, 0.10))
+
+            weight_sum = sum(w for _, w in components)
+            composite_score = sum(val * (w / weight_sum) for val, w in components)
+            overall_gpa = round(composite_score / 25.0, 2)  # Scale to 4.0
+        else:
+            overall_gpa = 0.0
 
         # Topic mastery records
         stmt_tm = select(TopicMasteryRecord).where(TopicMasteryRecord.student_id == student_id)
@@ -72,37 +102,31 @@ class LearningProfileService:
         strengths = [tm.topic_name for tm in tms if tm.mastery_level == "advanced"]
         weaknesses = [tm.topic_name for tm in tms if tm.mastery_level == "beginner"]
 
-        if not strengths:
-            strengths = ["Calculus Integration", "Algorithm Design"]
-        if not weaknesses:
-            weaknesses = ["Linear Algebra & Matrices"]
+        # Subject-wise breakdown from actual quiz attempts
+        subject_perf: Dict[str, Any] = {}
+        for q in quizzes:
+            if q.quiz and q.quiz.subject:
+                s_name = q.quiz.subject.title
+                if s_name not in subject_perf:
+                    subject_perf[s_name] = {"scores": [], "status": "in_progress"}
+                subject_perf[s_name]["scores"].append(q.percentage)
 
-        # Subject-wise breakdown
-        stmt_subj = select(Subject)
-        res_subj = await db.execute(stmt_subj)
-        subjects = res_subj.scalars().all()
-        subject_perf = {}
-        for s in subjects[:3]:
-            subject_perf[s.title] = {
-                "score": round(quiz_avg + (5.0 if s.title.startswith("C") else -3.0), 1),
-                "status": "proficient" if quiz_avg >= 75 else "remedial_required",
-            }
-        if not subject_perf:
-            subject_perf = {
-                "Mathematics & Calculus": {"score": 88.0, "status": "proficient"},
-                "Linear Algebra": {"score": 62.0, "status": "remedial_required"},
-                "Computer Science": {"score": 91.5, "status": "proficient"},
-            }
+        for s_name, data in subject_perf.items():
+            avg_s = round(sum(data["scores"]) / len(data["scores"]), 1)
+            data["score"] = avg_s
+            data["status"] = "proficient" if avg_s >= 75.0 else "remedial_required"
+            del data["scores"]
 
         # Goals & Focus areas
         goals = [
-            {"goal": "Master Linear Algebra Matrices", "progress_pct": 45, "target_date": "2026-12-05"},
-            {"goal": "Complete Chapter 4 Problem Set", "progress_pct": 80, "target_date": "2026-11-28"},
+            {"goal": "Complete active subject quizzes", "progress_pct": min(100, len(quizzes) * 25), "target_date": "2026-12-15"},
         ]
-        focus_areas = weaknesses or ["Linear Algebra & Matrices", "Vector Transformations"]
+        focus_areas = weaknesses if weaknesses else (["Review syllabus topics"] if not has_any_data else [])
 
         # Determine learning pace
-        if quiz_avg >= 85 and att_rate >= 90:
+        if not has_any_data:
+            pace = "uncalibrated"
+        elif quiz_avg >= 85 and att_rate >= 90:
             pace = "accelerated"
         elif quiz_avg >= 70:
             pace = "moderate"
@@ -121,7 +145,7 @@ class LearningProfileService:
                 attendance_rate=att_rate,
                 quizzes_completed=len(quizzes),
                 assignments_completed=len(subs),
-                learning_streak_days=5,
+                learning_streak_days=1 if has_any_data else 0,
                 learning_pace=pace,
                 subject_performance_json=subject_perf,
                 learning_goals_json=goals,

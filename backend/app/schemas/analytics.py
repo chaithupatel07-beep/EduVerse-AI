@@ -42,8 +42,14 @@ class AcademicPredictionResponse(BaseModel):
     predicted_success_score: float
     confidence_interval: str
     confidence_score: float
-    contributing_factors: Dict[str, float]
+    contributing_factors: Dict[str, Any]
     suggested_interventions: List[str]
+    is_rule_based: bool = False
+    data_sufficiency: str = "sufficient"  # "sufficient", "insufficient_data", "no_data"
+    methodology: str = "scikit_learn_ml_regression"  # "scikit_learn_ml_regression", "rule_based_provisional", "no_data_baseline"
+    transparency_notice: Optional[str] = None
+    data_points_count: Optional[Dict[str, int]] = None
+    missing_requirements: Optional[List[str]] = None
     created_at: str
 
 
