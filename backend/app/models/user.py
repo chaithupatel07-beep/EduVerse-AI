@@ -1,8 +1,12 @@
 from enum import Enum
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 from sqlalchemy import Boolean, ForeignKey, String, Text, Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, TimestampMixin, generate_uuid
+
+if TYPE_CHECKING:
+    from app.models.institution import Institution
+    from app.models.profiles import StudentProfile, TeacherProfile, ParentProfile
 
 
 class UserRole(str, Enum):
@@ -55,12 +59,23 @@ class User(Base, TimestampMixin):
     # Status flags
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=True)
+    account_status: Mapped[str] = mapped_column(String(50), default="active")  # active, pending, suspended, rejected
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # Refresh token storage for secure revocation
     refresh_token: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Relationships
     institution: Mapped[Optional["Institution"]] = relationship("Institution", back_populates="users")
+    student_profile: Mapped[Optional["StudentProfile"]] = relationship(
+        "StudentProfile", back_populates="user", uselist=False, cascade="all, delete-orphan"
+    )
+    teacher_profile: Mapped[Optional["TeacherProfile"]] = relationship(
+        "TeacherProfile", back_populates="user", uselist=False, cascade="all, delete-orphan"
+    )
+    parent_profile: Mapped[Optional["ParentProfile"]] = relationship(
+        "ParentProfile", back_populates="user", uselist=False, cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         return f"<User {self.email} ({self.role})>"

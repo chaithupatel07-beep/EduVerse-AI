@@ -5,6 +5,9 @@ import { Sidebar } from './components/Sidebar';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
+import { ForgotPassword } from './pages/ForgotPassword';
+import { EmailVerification } from './pages/EmailVerification';
+import { AccessDenied } from './pages/AccessDenied';
 import { Profile } from './pages/Profile';
 import { FoundationDashboard } from './pages/dashboards/FoundationDashboard';
 import { StudentDashboard } from './pages/dashboards/StudentDashboard';
@@ -25,18 +28,16 @@ const MainLayout: React.FC = () => {
 
   // Guest / Unauthenticated views
   if (!isAuthenticated || !user) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex flex-col">
-        <Navbar currentView={currentView} onNavigate={setCurrentView} />
-        <main className="flex-1">
-          {currentView === 'register' ? (
-            <Register onNavigate={setCurrentView} />
-          ) : (
-            <Login onNavigate={setCurrentView} />
-          )}
-        </main>
-      </div>
-    );
+    if (currentView === 'register') {
+      return <Register onNavigate={setCurrentView} />;
+    }
+    if (currentView === 'forgot-password') {
+      return <ForgotPassword onNavigate={setCurrentView} />;
+    }
+    if (currentView === 'verify-email') {
+      return <EmailVerification onNavigate={setCurrentView} />;
+    }
+    return <Login onNavigate={setCurrentView} />;
   }
 
   // Role-Specific Dashboard Selector
@@ -64,6 +65,10 @@ const MainLayout: React.FC = () => {
         return renderDashboardByRole();
       case 'profile':
         return <Profile />;
+      case 'verify-email':
+        return <EmailVerification onNavigate={setCurrentView} />;
+      case 'access-denied':
+        return <AccessDenied onNavigate={setCurrentView} />;
       case 'courses':
       case 'ai-tutor':
       case 'quizzes':

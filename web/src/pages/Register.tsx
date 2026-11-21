@@ -11,10 +11,12 @@ import {
   User,
   Phone,
   Building2,
+  KeyRound,
   ArrowRight,
   AlertCircle,
   Loader2,
   CheckCircle2,
+  Sparkles,
 } from 'lucide-react';
 
 interface RegisterProps {
@@ -22,271 +24,484 @@ interface RegisterProps {
 }
 
 export const Register: React.FC<RegisterProps> = ({ onNavigate }) => {
-  const { register, error, clearError } = useAuth();
+  const { registerProfile, clearError } = useAuth();
   const [role, setRole] = useState<UserRole>('student');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [phone, setPhone] = useState('');
   const [institutionCode, setInstitutionCode] = useState('OGA-2026');
-  const [gradeLevel, setGradeLevel] = useState('Grade 11 - STEM');
-  const [subjectSpecialization, setSubjectSpecialization] = useState('Computer Science & AI');
+
+  // Role-Specific Fields
+  // Student
+  const [studentId, setStudentId] = useState('');
+  const [department, setDepartment] = useState('Computer Science');
+  const [academicYear, setAcademicYear] = useState('3rd Year / Semester 5');
+  const [program, setProgram] = useState('B.Tech in Artificial Intelligence');
+
+  // Teacher
+  const [employeeId, setEmployeeId] = useState('');
+  const [designation, setDesignation] = useState('Assistant Professor');
+  const [specialization, setSpecialization] = useState('Machine Learning');
+
+  // Parent
+  const [linkedStudentEmail, setLinkedStudentEmail] = useState('');
+  const [relationshipType, setRelationshipType] = useState('guardian');
+
+  // Admin
+  const [invitationCode, setInvitationCode] = useState('');
+
+  const [agreeTerms, setAgreeTerms] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [localError, setLocalError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLocalError(null);
+    setError(null);
     clearError();
 
     if (!fullName || !email || !password) {
-      setLocalError('Please fill in all required fields.');
+      setError('Please provide your name, email, and password.');
       return;
     }
 
     if (password.length < 6) {
-      setLocalError('Password must be at least 6 characters.');
+      setError('Password must contain at least 6 characters.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+
+    if (role === 'admin' && !invitationCode) {
+      setError('Administrative registration requires an authorized invitation code (e.g. EDUVERSE-ADMIN-2026).');
+      return;
+    }
+
+    if (!agreeTerms) {
+      setError('Please agree to the Educational Code of Conduct and Terms of Service.');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await register({
-        full_name: fullName,
-        email,
+      await registerProfile({
+        full_name: fullName.trim(),
+        email: email.trim().toLowerCase(),
         password,
         role,
-        phone: phone || undefined,
-        institution_code: institutionCode || undefined,
-        grade_level: role === 'student' ? gradeLevel : undefined,
-        subject_specialization: role === 'teacher' ? subjectSpecialization : undefined,
+        institution_code: institutionCode.trim().toUpperCase() || undefined,
+        phone: phone.trim() || undefined,
+        student_id: role === 'student' ? studentId.trim() || undefined : undefined,
+        department: role === 'student' || role === 'teacher' ? department : undefined,
+        academic_year: role === 'student' ? academicYear : undefined,
+        program: role === 'student' ? program : undefined,
+        employee_id: role === 'teacher' ? employeeId.trim() || undefined : undefined,
+        designation: role === 'teacher' ? designation : undefined,
+        specialization: role === 'teacher' ? specialization : undefined,
+        linked_student_email: role === 'parent' ? linkedStudentEmail.trim().toLowerCase() || undefined : undefined,
+        relationship_type: role === 'parent' ? relationshipType : undefined,
+        invitation_code: role === 'admin' ? invitationCode.trim() : undefined,
       });
+
       onNavigate('dashboard');
     } catch (err: any) {
-      setLocalError(err.message || 'Registration failed.');
+      setError(err.message || 'Registration failed. Please verify your inputs.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const roleTabs: { id: UserRole; label: string; icon: React.ElementType; color: string }[] = [
-    { id: 'student', label: 'Student', icon: GraduationCap, color: 'text-emerald-600' },
-    { id: 'teacher', label: 'Teacher', icon: BookOpen, color: 'text-blue-600' },
-    { id: 'parent', label: 'Parent', icon: HeartHandshake, color: 'text-purple-600' },
-    { id: 'admin', label: 'Admin', icon: Shield, color: 'text-amber-600' },
-  ];
-
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-slate-50">
-      <div className="sm:mx-auto sm:w-full sm:max-w-lg text-center">
-        <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-          Join EduVerse AI
-        </h2>
-        <p className="mt-2 text-sm text-slate-600">
-          Create an account tailored to your role in the education ecosystem
-        </p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-4 py-8">
+      <div className="w-full max-w-3xl bg-white rounded-3xl p-8 shadow-2xl border border-slate-100">
+        
+        {/* Header */}
+        <div className="text-center max-w-lg mx-auto mb-6">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-[11px] font-bold mb-2">
+            <Sparkles size={13} />
+            <span>Multi-Role Academic Onboarding</span>
+          </div>
+          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Create Your EduVerse Account</h1>
+          <p className="text-xs text-slate-500 mt-1">
+            Choose your academic role to personalize permissions, workflows, and AI assistants.
+          </p>
+        </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-lg px-4 sm:px-0">
-        <div className="bg-white py-8 px-6 sm:px-10 shadow-xl shadow-slate-200/50 rounded-3xl border border-slate-100">
-          {/* Role Selection Tabs */}
-          <div className="mb-6">
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2.5">
-              Select Your Role
-            </label>
-            <div className="grid grid-cols-4 gap-2">
-              {roleTabs.map((tab) => {
-                const Icon = tab.icon;
-                const isSelected = role === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setRole(tab.id)}
-                    className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition ${
-                      isSelected
-                        ? 'border-blue-600 bg-blue-50/50 shadow-sm'
-                        : 'border-slate-200 hover:border-slate-300 bg-white'
-                    }`}
-                  >
-                    <Icon size={20} className={isSelected ? 'text-blue-600' : tab.color} />
-                    <span
-                      className={`text-xs mt-1.5 font-semibold capitalize ${
-                        isSelected ? 'text-blue-900' : 'text-slate-600'
-                      }`}
-                    >
-                      {tab.label}
-                    </span>
-                  </button>
-                );
-              })}
+        {/* Role Selector Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <button
+            type="button"
+            onClick={() => setRole('student')}
+            className={`p-3 rounded-2xl border text-left transition flex flex-col justify-between ${
+              role === 'student'
+                ? 'bg-blue-50/80 border-blue-500 shadow-sm shadow-blue-500/10'
+                : 'border-slate-200 hover:border-slate-300'
+            }`}
+          >
+            <div className={`p-2 w-fit rounded-xl mb-2 ${role === 'student' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
+              <GraduationCap size={18} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-800">Student</p>
+              <p className="text-[10px] text-slate-500 mt-0.5">Courses, AI tutor & quizzes</p>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setRole('teacher')}
+            className={`p-3 rounded-2xl border text-left transition flex flex-col justify-between ${
+              role === 'teacher'
+                ? 'bg-emerald-50/80 border-emerald-500 shadow-sm shadow-emerald-500/10'
+                : 'border-slate-200 hover:border-slate-300'
+            }`}
+          >
+            <div className={`p-2 w-fit rounded-xl mb-2 ${role === 'teacher' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
+              <BookOpen size={18} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-800">Teacher</p>
+              <p className="text-[10px] text-slate-500 mt-0.5">Classes & AI curriculum</p>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setRole('parent')}
+            className={`p-3 rounded-2xl border text-left transition flex flex-col justify-between ${
+              role === 'parent'
+                ? 'bg-purple-50/80 border-purple-500 shadow-sm shadow-purple-500/10'
+                : 'border-slate-200 hover:border-slate-300'
+            }`}
+          >
+            <div className={`p-2 w-fit rounded-xl mb-2 ${role === 'parent' ? 'bg-purple-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
+              <HeartHandshake size={18} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-800">Parent</p>
+              <p className="text-[10px] text-slate-500 mt-0.5">Family & progress links</p>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setRole('admin')}
+            className={`p-3 rounded-2xl border text-left transition flex flex-col justify-between ${
+              role === 'admin'
+                ? 'bg-rose-50/80 border-rose-500 shadow-sm shadow-rose-500/10'
+                : 'border-slate-200 hover:border-slate-300'
+            }`}
+          >
+            <div className={`p-2 w-fit rounded-xl mb-2 ${role === 'admin' ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
+              <Shield size={18} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-800">Institution Admin</p>
+              <p className="text-[10px] text-slate-500 mt-0.5">Governance & security</p>
+            </div>
+          </button>
+        </div>
+
+        {error && (
+          <div className="mb-6 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2.5">
+            <AlertCircle size={16} className="shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          
+          {/* Common Account Fields */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Full Legal Name</label>
+              <div className="relative">
+                <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  required
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="e.g. Alex Chen"
+                  className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Official Email Address</label>
+              <div className="relative">
+                <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@eduverse.io"
+                  className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
+                />
+              </div>
             </div>
           </div>
 
-          {(localError || error) && (
-            <div className="mb-5 p-3.5 rounded-2xl bg-red-50 border border-red-200 flex items-start gap-2.5 text-xs text-red-700">
-              <AlertCircle size={16} className="shrink-0 mt-0.5 text-red-600" />
-              <span>{localError || error}</span>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Full Name *
-              </label>
-              <div className="relative rounded-xl shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                  <User size={16} />
-                </div>
-                <input
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="e.g. Jordan Miller"
-                  required
-                  className="block w-full pl-10 pr-3 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none transition"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Email Address *
-              </label>
-              <div className="relative rounded-xl shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                  <Mail size={16} />
-                </div>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="e.g. jordan@example.com"
-                  required
-                  className="block w-full pl-10 pr-3 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none transition"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Password *
-              </label>
-              <div className="relative rounded-xl shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                  <Lock size={16} />
-                </div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Password</label>
+              <div className="relative">
+                <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="password"
+                  required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Minimum 6 characters"
-                  required
-                  minLength={6}
-                  className="block w-full pl-10 pr-3 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none transition"
+                  className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
                 />
               </div>
             </div>
 
-            {/* Dynamic Role Fields */}
-            {role === 'student' && (
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Grade / Academic Level
-                </label>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Confirm Password</label>
+              <div className="relative">
+                <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
-                  type="text"
-                  value={gradeLevel}
-                  onChange={(e) => setGradeLevel(e.target.value)}
-                  placeholder="e.g. Grade 11 STEM, Undergraduate"
-                  className="block w-full px-3 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 outline-none"
+                  type="password"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Repeat password"
+                  className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
                 />
               </div>
-            )}
+            </div>
+          </div>
 
-            {role === 'teacher' && (
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Subject Specialization
-                </label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Phone Number (Optional)</label>
+              <div className="relative">
+                <Phone size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
-                  type="text"
-                  value={subjectSpecialization}
-                  onChange={(e) => setSubjectSpecialization(e.target.value)}
-                  placeholder="e.g. Physics & Computer Science"
-                  className="block w-full px-3 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 outline-none"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+1-555-0142"
+                  className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
                 />
               </div>
-            )}
+            </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Institution Code
-                </label>
-                <div className="relative rounded-xl shadow-sm">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                    <Building2 size={16} />
-                  </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Institution Code</label>
+              <div className="relative">
+                <Building2 size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={institutionCode}
+                  onChange={(e) => setInstitutionCode(e.target.value)}
+                  placeholder="e.g. OGA-2026"
+                  className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white font-mono uppercase"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Role-Specific Conditional Form Sections */}
+          {role === 'student' && (
+            <div className="p-4 rounded-2xl bg-blue-50/50 border border-blue-100 space-y-3">
+              <p className="text-xs font-bold text-blue-900 flex items-center gap-1.5">
+                <GraduationCap size={15} />
+                <span>Student Academic Profile</span>
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Student Identifier</label>
                   <input
                     type="text"
-                    value={institutionCode}
-                    onChange={(e) => setInstitutionCode(e.target.value)}
-                    placeholder="OGA-2026"
-                    className="block w-full pl-10 pr-3 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 outline-none"
+                    value={studentId}
+                    onChange={(e) => setStudentId(e.target.value)}
+                    placeholder="e.g. STU-2026-0042"
+                    className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Phone (Optional)
-                </label>
-                <div className="relative rounded-xl shadow-sm">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                    <Phone size={16} />
-                  </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Academic Year</label>
+                  <select
+                    value={academicYear}
+                    onChange={(e) => setAcademicYear(e.target.value)}
+                    className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="1st Year / Semester 1">1st Year / Semester 1</option>
+                    <option value="2nd Year / Semester 3">2nd Year / Semester 3</option>
+                    <option value="3rd Year / Semester 5">3rd Year / Semester 5</option>
+                    <option value="4th Year / Semester 7">4th Year / Semester 7</option>
+                  </select>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Major or Program</label>
                   <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+1 555-0199"
-                    className="block w-full pl-10 pr-3 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 outline-none"
+                    type="text"
+                    value={program}
+                    onChange={(e) => setProgram(e.target.value)}
+                    placeholder="e.g. B.Tech in Artificial Intelligence"
+                    className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
               </div>
             </div>
+          )}
 
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full mt-4 flex items-center justify-center gap-2 py-3 px-4 rounded-xl shadow-md bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-white font-semibold text-sm transition disabled:opacity-50"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 size={16} className="animate-spin" />
-                  <span>Registering Profile...</span>
-                </>
-              ) : (
-                <>
-                  <span>Create {role.toUpperCase()} Account</span>
-                  <ArrowRight size={16} />
-                </>
-              )}
-            </button>
-          </form>
+          {role === 'teacher' && (
+            <div className="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-100 space-y-3">
+              <p className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
+                <BookOpen size={15} />
+                <span>Faculty & Academic Credentials</span>
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Faculty / Employee ID</label>
+                  <input
+                    type="text"
+                    value={employeeId}
+                    onChange={(e) => setEmployeeId(e.target.value)}
+                    placeholder="e.g. FAC-2026-018"
+                    className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Academic Designation</label>
+                  <input
+                    type="text"
+                    value={designation}
+                    onChange={(e) => setDesignation(e.target.value)}
+                    placeholder="e.g. Senior Associate Professor"
+                    className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Subject Specialization</label>
+                  <input
+                    type="text"
+                    value={specialization}
+                    onChange={(e) => setSpecialization(e.target.value)}
+                    placeholder="e.g. Deep Learning & Natural Language Processing"
+                    className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
-          <div className="mt-6 text-center text-xs text-slate-500">
-            Already registered?{' '}
-            <button
-              onClick={() => onNavigate('login')}
-              className="font-bold text-blue-600 hover:text-blue-700 underline-offset-2 hover:underline"
-            >
-              Sign In
-            </button>
+          {role === 'parent' && (
+            <div className="p-4 rounded-2xl bg-purple-50/50 border border-purple-100 space-y-3">
+              <p className="text-xs font-bold text-purple-900 flex items-center gap-1.5">
+                <HeartHandshake size={15} />
+                <span>Student Guardian Linking</span>
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Child's Student Email</label>
+                  <input
+                    type="email"
+                    value={linkedStudentEmail}
+                    onChange={(e) => setLinkedStudentEmail(e.target.value)}
+                    placeholder="student@eduverse.io"
+                    className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                  <p className="text-[10px] text-slate-500 mt-0.5">A verification request will be sent to the student.</p>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Relationship</label>
+                  <select
+                    value={relationshipType}
+                    onChange={(e) => setRelationshipType(e.target.value)}
+                    className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="father">Father</option>
+                    <option value="mother">Mother</option>
+                    <option value="guardian">Legal Guardian</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {role === 'admin' && (
+            <div className="p-4 rounded-2xl bg-rose-50/50 border border-rose-200 space-y-3">
+              <p className="text-xs font-bold text-rose-900 flex items-center gap-1.5">
+                <Shield size={15} />
+                <span>Administrator Verification Code</span>
+              </p>
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Invitation / Authorization Key</label>
+                <div className="relative">
+                  <KeyRound size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-rose-500" />
+                  <input
+                    type="text"
+                    required
+                    value={invitationCode}
+                    onChange={(e) => setInvitationCode(e.target.value)}
+                    placeholder="e.g. EDUVERSE-ADMIN-2026"
+                    className="w-full pl-9 pr-3 py-2 text-xs bg-white border border-rose-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 font-mono"
+                  />
+                </div>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Public signups cannot self-assign Administrator privileges. Use code <code>EDUVERSE-ADMIN-2026</code> for evaluation.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Terms Agreement */}
+          <div className="pt-2">
+            <label className="flex items-start gap-2.5 text-xs text-slate-600 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={agreeTerms}
+                onChange={(e) => setAgreeTerms(e.target.checked)}
+                className="mt-0.5 rounded text-blue-600 focus:ring-blue-500"
+              />
+              <span>
+                I agree to the <span className="font-semibold text-slate-800">Educational Code of Conduct</span> and acknowledge that access is monitored according to my authoritative role.
+              </span>
+            </label>
           </div>
+
+          {/* Submit Button */}
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 transition disabled:opacity-60"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                <span>Registering Account & Role Profile...</span>
+              </>
+            ) : (
+              <>
+                <span>Complete Registration</span>
+                <ArrowRight size={15} />
+              </>
+            )}
+          </button>
+        </form>
+
+        <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+          <span>Already registered?</span>
+          <button
+            type="button"
+            onClick={() => onNavigate('login')}
+            className="font-bold text-blue-600 hover:underline"
+          >
+            Back to Sign In
+          </button>
         </div>
+
       </div>
     </div>
   );

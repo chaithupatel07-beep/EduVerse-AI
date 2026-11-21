@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -15,7 +15,12 @@ from app.schemas.auth import (
 )
 from app.schemas.common import ApiResponse
 from app.schemas.user import UserResponse
+from app.schemas.profiles import (
+    RegisterProfileRequest,
+    UserProfileDetailResponse,
+)
 from app.services.auth_service import auth_service
+from app.services.firebase_service import firebase_service
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -31,6 +36,27 @@ async def register_user(
     return ApiResponse(
         success=True,
         message=f"User account created successfully as {user.role.value}.",
+        data=AuthResponseData(tokens=tokens, user=user_response),
+    )
+
+
+@router.post("/register-profile", response_model=ApiResponse[AuthResponseData], status_code=status.HTTP_201_CREATED)
+async def register_profile(
+    request: RegisterProfileRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Advanced Registration with role-specific profiles:
+    - Student: student_id, department, academic_year, program
+    - Teacher: employee_id, designation, specialization
+    - Parent: phone, linked_student_email
+    - Admin: requires verified invitation code
+    """
+    user, tokens = await auth_service.register_profile(db, request)
+    user_response = await auth_service.build_user_response(db, user)
+    return ApiResponse(
+        success=True,
+        message=f"Account registered with role-specific profile as {user.role.value}.",
         data=AuthResponseData(tokens=tokens, user=user_response),
     )
 
@@ -55,12 +81,30 @@ async def login_with_firebase(
     request: FirebaseLoginRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    """Authenticate using Firebase Authentication ID token."""
+    """Authenticate using Firebase Authentication ID token with authoritative PostgreSQL role retrieval."""
     user, tokens = await auth_service.login_with_firebase(db, request)
     user_response = await auth_service.build_user_response(db, user)
     return ApiResponse(
         success=True,
         message="Firebase authentication successful.",
+        data=AuthResponseData(tokens=tokens, user=user_response),
+    )
+
+
+@router.post("/verify-token", response_model=ApiResponse[AuthResponseData])
+async def verify_auth_token(
+    request: FirebaseLoginRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Verifies an incoming Firebase ID token or internal token, ensures user account
+    exists in PostgreSQL, and authoritatively returns the database-stored role.
+    """
+    user, tokens = await auth_service.login_with_firebase(db, request)
+    user_response = await auth_service.build_user_response(db, user)
+    return ApiResponse(
+        success=True,
+        message="Token verified and role authoritatively loaded from database.",
         data=AuthResponseData(tokens=tokens, user=user_response),
     )
 
@@ -93,15 +137,15 @@ async def logout_user(
     )
 
 
-@router.get("/me", response_model=ApiResponse[UserResponse])
+@router.get("/me", response_model=ApiResponse[UserProfileDetailResponse])
 async def get_my_profile(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Retrieve currently authenticated user profile."""
-    user_response = await auth_service.build_user_response(db, current_user)
+    """Retrieve currently authenticated user profile with full role-specific details."""
+    detail_response = await auth_service.build_user_detail_response(db, current_user)
     return ApiResponse(
         success=True,
         message="Current user profile retrieved.",
-        data=user_response,
+        data=detail_response,
     )

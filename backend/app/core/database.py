@@ -55,8 +55,7 @@ async def init_db() -> None:
     try:
         async with engine.begin() as conn:
             # Import models to ensure they are registered with Base.metadata
-            import app.models.user  # noqa: F401
-            import app.models.institution  # noqa: F401
+            import app.models  # noqa: F401
             await conn.run_sync(Base.metadata.create_all)
         logger.info("Database initialized successfully.")
     except Exception as e:

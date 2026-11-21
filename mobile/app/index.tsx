@@ -1,10 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { checkBackendHealth, API_BASE_URL } from '../src/services/api';
+import { UserProfile } from '../src/types';
+import { LoginScreen } from '../src/screens/LoginScreen';
+import { RegisterScreen } from '../src/screens/RegisterScreen';
+import { ForgotPasswordScreen } from '../src/screens/ForgotPasswordScreen';
+import { StudentScreen } from '../src/screens/StudentScreen';
+import { TeacherScreen } from '../src/screens/TeacherScreen';
+import { ParentScreen } from '../src/screens/ParentScreen';
+import { AdminScreen } from '../src/screens/AdminScreen';
 
 export default function MobileHomeScreen() {
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [authView, setAuthView] = useState<'login' | 'register' | 'forgot-password'>('login');
   const [healthStatus, setHealthStatus] = useState<string>('Pinging backend...');
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const [isPinging, setIsPinging] = useState<boolean>(true);
@@ -14,7 +24,7 @@ export default function MobileHomeScreen() {
     const res = await checkBackendHealth();
     if (res.connected) {
       setIsConnected(true);
-      setHealthStatus(`Connected to FastAPI (v${res.data?.version || '1.0'})`);
+      setHealthStatus(`Connected (v${res.data?.version || '1.0'})`);
     } else {
       setIsConnected(false);
       setHealthStatus(`Offline (${res.error})`);
@@ -26,54 +36,81 @@ export default function MobileHomeScreen() {
     testConnection();
   }, []);
 
+  // When user is authenticated, route to role-specific screen
+  if (currentUser) {
+    let RoleComponent = StudentScreen;
+    if (currentUser.role === 'teacher') RoleComponent = TeacherScreen;
+    if (currentUser.role === 'parent') RoleComponent = ParentScreen;
+    if (currentUser.role === 'admin') RoleComponent = AdminScreen;
+
+    return (
+      <View style={{ flex: 1 }}>
+        <View style={styles.topBar}>
+          <Text style={styles.topBarUser}>
+            {currentUser.full_name} ({currentUser.role.toUpperCase()})
+          </Text>
+          <TouchableOpacity onPress={() => setCurrentUser(null)} style={styles.logoutBtn}>
+            <Text style={styles.logoutBtnText}>Sign Out</Text>
+          </TouchableOpacity>
+        </View>
+        <RoleComponent user={currentUser} />
+      </View>
+    );
+  }
+
+  // Unauthenticated screens
+  if (authView === 'register') {
+    return (
+      <RegisterScreen
+        onRegisterSuccess={(user) => setCurrentUser(user)}
+        onNavigateLogin={() => setAuthView('login')}
+      />
+    );
+  }
+
+  if (authView === 'forgot-password') {
+    return (
+      <ForgotPasswordScreen
+        onNavigateLogin={() => setAuthView('login')}
+      />
+    );
+  }
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.header}>
         <View style={styles.badge}>
-          <Text style={styles.badgeText}>EduVerse AI Mobile</Text>
+          <Text style={styles.badgeText}>EduVerse AI Mobile • Phase 2</Text>
         </View>
-        <Text style={styles.title}>EduVerse AI Ecosystem</Text>
-        <Text style={styles.subtitle}>Phase 1 Mobile Application Foundation</Text>
+        <Text style={styles.title}>EduVerse Mobile Ecosystem</Text>
+        <Text style={styles.subtitle}>Authoritative Multi-Role Authentication & Access</Text>
       </View>
 
-      {/* Real-time Backend Connection Card */}
-      <Card title="Backend Service Status" subtitle={`Target URL: ${API_BASE_URL}`}>
-        <View style={styles.statusRow}>
-          <View
-            style={[
-              styles.statusDot,
-              { backgroundColor: isConnected ? '#10b981' : isConnected === false ? '#ef4444' : '#f59e0b' },
-            ]}
-          />
-          <Text style={styles.statusText}>{healthStatus}</Text>
-        </View>
-
-        <Button
-          title={isPinging ? 'Pinging...' : 'Verify Backend Connection'}
-          onPress={testConnection}
-          variant="outline"
-          isLoading={isPinging}
-          style={styles.pingBtn}
+      {/* Backend connection pill */}
+      <View style={styles.connectionPill}>
+        <View
+          style={[
+            styles.statusDot,
+            { backgroundColor: isConnected ? '#10b981' : isConnected === false ? '#ef4444' : '#f59e0b' },
+          ]}
         />
-      </Card>
+        <Text style={styles.connectionText}>{healthStatus}</Text>
+      </View>
 
-      {/* Role Overview */}
-      <Card title="Connected Roles (Phase 1)" subtitle="Multi-role educational foundation">
-        <View style={styles.roleGrid}>
-          <View style={[styles.roleChip, { borderColor: '#10b981' }]}>
-            <Text style={[styles.roleChipText, { color: '#047857' }]}>🎓 Student</Text>
-          </View>
-          <View style={[styles.roleChip, { borderColor: '#3b82f6' }]}>
-            <Text style={[styles.roleChipText, { color: '#1d4ed8' }]}>📚 Teacher</Text>
-          </View>
-          <View style={[styles.roleChip, { borderColor: '#8b5cf6' }]}>
-            <Text style={[styles.roleChipText, { color: '#7e22ce' }]}>💜 Parent</Text>
-          </View>
-          <View style={[styles.roleChip, { borderColor: '#f59e0b' }]}>
-            <Text style={[styles.roleChipText, { color: '#b45309' }]}>🏛️ Admin</Text>
-          </View>
-        </View>
-      </Card>
+      {/* Login Screen embedded */}
+      <LoginScreen
+        onLoginSuccess={(user) => setCurrentUser(user)}
+      />
+
+      <View style={styles.navRow}>
+        <TouchableOpacity onPress={() => setAuthView('register')}>
+          <Text style={styles.navLink}>Create New Account</Text>
+        </TouchableOpacity>
+        <Text style={{ color: '#94a3b8' }}>•</Text>
+        <TouchableOpacity onPress={() => setAuthView('forgot-password')}>
+          <Text style={styles.navLink}>Forgot Password?</Text>
+        </TouchableOpacity>
+      </View>
     </ScrollView>
   );
 }
@@ -82,70 +119,98 @@ const styles = StyleSheet.create({
   container: {
     padding: 20,
     paddingTop: 50,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#0f172a',
     minHeight: '100%',
   },
   header: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   badge: {
-    backgroundColor: '#e0effe',
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#3b82f6',
     paddingVertical: 4,
     paddingHorizontal: 12,
     borderRadius: 20,
     marginBottom: 8,
   },
   badgeText: {
-    color: '#0359a1',
+    color: '#60a5fa',
     fontWeight: '700',
-    fontSize: 12,
+    fontSize: 11,
   },
   title: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#0f172a',
+    color: '#f8fafc',
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 12,
-    color: '#64748b',
+    color: '#94a3b8',
     marginTop: 4,
   },
-  statusRow: {
+  connectionPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginVertical: 8,
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#1e293b',
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    alignSelf: 'center',
+    marginBottom: 16,
   },
   statusDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
-  statusText: {
-    fontSize: 12,
+  connectionText: {
+    fontSize: 11,
+    color: '#cbd5e1',
     fontWeight: '600',
-    color: '#334155',
   },
-  pingBtn: {
-    marginTop: 10,
-  },
-  roleGrid: {
+  navRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 20,
+    marginBottom: 30,
   },
-  roleChip: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    backgroundColor: '#ffffff',
-  },
-  roleChipText: {
+  navLink: {
+    color: '#60a5fa',
     fontSize: 12,
+    fontWeight: '700',
+  },
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 45,
+    paddingBottom: 12,
+    backgroundColor: '#1e293b',
+    borderBottomWidth: 1,
+    borderBottomColor: '#334155',
+  },
+  topBarUser: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#f8fafc',
+  },
+  logoutBtn: {
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: '#ef4444',
+  },
+  logoutBtnText: {
+    color: '#ffffff',
+    fontSize: 11,
     fontWeight: '700',
   },
 });

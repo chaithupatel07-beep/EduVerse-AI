@@ -1,11 +1,12 @@
 @echo off
 echo ========================================================
 echo   Starting EduVerse AI Educational Ecosystem Services
+echo   Phase 2: Authentication and Role Management
 echo ========================================================
 echo.
-echo 1. Seeding Phase 1 Database & Default Accounts...
+echo 1. Seeding Phase 2 Database & Role Profiles...
 cd /d %~dp0backend
-py -3.13 scripts\seed_phase1.py
+py -3.13 scripts\seed_phase2.py
 
 echo.
 echo 2. Launching FastAPI Backend on http://localhost:8000 ...
@@ -18,7 +19,7 @@ start "EduVerse Web App (Vite)" cmd /k "cd /d %~dp0web && npm run dev"
 
 echo.
 echo ========================================================
-echo EduVerse AI Phase 1 services launched successfully!
+echo EduVerse AI Phase 2 services launched successfully!
 echo - Web Application:  http://localhost:5173
 echo - Backend API Docs: http://localhost:8000/docs
 echo - System Health:    http://localhost:8000/api/v1/health

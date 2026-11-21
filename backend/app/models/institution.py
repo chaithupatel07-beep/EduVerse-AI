@@ -16,8 +16,11 @@ class Institution(Base, TimestampMixin):
     state: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     country: Mapped[str] = mapped_column(String(100), default="Global")
     contact_email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    official_email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     contact_phone: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     website: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    institution_type: Mapped[str] = mapped_column(String(100), default="university")  # school, college, university, institute
+    verification_status: Mapped[str] = mapped_column(String(50), default="verified")  # verified, pending, rejected
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     # Relationships
