@@ -73,10 +73,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         <Text style={styles.subtitle}>Sign in with your role-based account</Text>
       </View>
 
-      {/* Demo Fast Login Box */}
+      {/* Fast Login Profile Selector */}
       <View style={styles.demoCard}>
-        <Text style={styles.demoTitle}>FAST DEMO ROLE ACCESS</Text>
-        <Text style={styles.demoSubtitle}>Tap to test RBAC on mobile:</Text>
+        <Text style={styles.demoTitle}>QUICK PORTAL ROLE ACCESS</Text>
+        <Text style={styles.demoSubtitle}>Select a role profile to sign in:</Text>
         <View style={styles.demoRow}>
           {demoAccounts.map((d) => (
             <TouchableOpacity

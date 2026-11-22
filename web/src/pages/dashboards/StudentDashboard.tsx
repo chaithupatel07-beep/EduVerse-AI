@@ -60,7 +60,12 @@ import {
   Compass,
 } from 'lucide-react';
 
-export const StudentDashboard: React.FC = () => {
+interface StudentDashboardProps {
+  currentView?: string;
+  onNavigate?: (view: string) => void;
+}
+
+export const StudentDashboard: React.FC<StudentDashboardProps> = ({ currentView, onNavigate }) => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<
     | 'overview'
@@ -78,6 +83,25 @@ export const StudentDashboard: React.FC = () => {
     | 'attendance'
     | 'announcements'
   >('overview');
+
+  // Synchronize activeTab when currentView changes from sidebar
+  useEffect(() => {
+    if (!currentView) return;
+    if (currentView === 'dashboard' || currentView === 'overview') setActiveTab('overview');
+    else if (currentView === 'courses') setActiveTab('courses');
+    else if (currentView === 'materials') setActiveTab('materials');
+    else if (currentView === 'ai-tutor' || currentView === 'ai_companion') setActiveTab('ai_companion');
+    else if (currentView === 'quizzes') setActiveTab('quizzes');
+    else if (currentView === 'exam-simulator' || currentView === 'exam_simulator') setActiveTab('exam_simulator');
+    else if (currentView === 'notes-scanner' || currentView === 'notes_scanner') setActiveTab('notes_scanner');
+    else if (currentView === 'study-plan' || currentView === 'personalized_learning') setActiveTab('personalized_learning');
+    else if (currentView === 'timetable' || currentView === 'smart_timetable') setActiveTab('smart_timetable');
+    else if (currentView === 'gamification') setActiveTab('gamification');
+    else if (currentView === 'knowledge-map' || currentView === 'knowledge_map') setActiveTab('knowledge_map');
+    else if (currentView === 'assignments') setActiveTab('assignments');
+    else if (currentView === 'attendance') setActiveTab('attendance');
+    else if (currentView === 'announcements') setActiveTab('announcements');
+  }, [currentView]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Phase 5: Personalization & Analytics States
@@ -316,12 +340,14 @@ export const StudentDashboard: React.FC = () => {
         },
       ]);
     } catch (err: any) {
+      const fallback = aiService.generateOfflineStudentResponse(query, aiSelectedLanguage);
       setAiChatMessages((prev) => [
         ...prev,
         {
           sender: 'assistant',
-          content: err?.response?.data?.detail || 'AI Assistant momentarily unavailable.',
+          content: err?.response?.data?.detail || fallback.content,
           language: aiSelectedLanguage,
+          sources: fallback.sources,
         },
       ]);
     } finally {
@@ -487,31 +513,35 @@ export const StudentDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto">
+      {/* Navigation Tabs (Responsive Wrap - No Horizontal Scrollbar) */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-3">
         {[
-          { id: 'overview', label: 'Overview' },
-          { id: 'exam_simulator', label: 'Exam Simulator (Phase 6.5)' },
-          { id: 'notes_scanner', label: 'Notes Scanner & Doubt Solver (Phase 6.5)' },
-          { id: 'smart_timetable', label: 'Smart Timetable (Phase 6.5)' },
-          { id: 'gamification', label: 'Gamification & Badges (Phase 6.5)' },
-          { id: 'knowledge_map', label: 'Visual Knowledge Map (Phase 6.5)' },
-          { id: 'personalized_learning', label: 'Personalized Learning & ML (Phase 5)' },
-          { id: 'ai_companion', label: 'AI Study Companion (RAG)' },
-          { id: 'courses', label: `My Courses (${enrolledClasses.length})` },
-          { id: 'materials', label: `Study Materials (${materials.length})` },
-          { id: 'assignments', label: `Assignments (${assignments.length})` },
-          { id: 'quizzes', label: `Quizzes (${quizzes.length})` },
-          { id: 'attendance', label: 'Attendance' },
-          { id: 'announcements', label: `Announcements (${announcements.length})` },
+          { id: 'overview', navId: 'dashboard', label: 'Command Center Overview' },
+          { id: 'courses', navId: 'courses', label: `My Courses (${enrolledClasses.length})` },
+          { id: 'materials', navId: 'materials', label: `Study Materials (${materials.length})` },
+          { id: 'ai_companion', navId: 'ai-tutor', label: 'AI Study Assistant (RAG)' },
+          { id: 'quizzes', navId: 'quizzes', label: `Quizzes (${quizzes.length})` },
+          { id: 'exam_simulator', navId: 'exam-simulator', label: 'AI Exam Simulator' },
+          { id: 'notes_scanner', navId: 'notes-scanner', label: 'Notes Scanner & Doubt Solver' },
+          { id: 'personalized_learning', navId: 'study-plan', label: 'Personalized Study Plan' },
+          { id: 'smart_timetable', navId: 'study-plan', label: 'Smart Timetable' },
+          { id: 'gamification', navId: 'gamification', label: 'Gamification & Badges' },
+          { id: 'knowledge_map', navId: 'knowledge-map', label: 'Visual Knowledge Map' },
+          { id: 'assignments', navId: 'dashboard', label: `Assignments (${assignments.length})` },
+          { id: 'attendance', navId: 'dashboard', label: 'Attendance Records' },
+          { id: 'announcements', navId: 'dashboard', label: `Announcements (${announcements.length})` },
         ].map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition whitespace-nowrap ${activeTab === tab.id
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-              }`}
+            onClick={() => {
+              setActiveTab(tab.id as any);
+              if (onNavigate) onNavigate(tab.navId);
+            }}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shadow-2xs ${
+              activeTab === tab.id
+                ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
+                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+            }`}
           >
             {tab.label}
           </button>
@@ -683,7 +713,7 @@ export const StudentDashboard: React.FC = () => {
             <div className="relative z-10 max-w-3xl">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-xs font-semibold tracking-wide mb-3">
                 <BrainCircuit size={14} className="text-blue-300" />
-                <span>Phase 5 • Personalized Academic Intelligence</span>
+                <span>Personalized Academic Intelligence</span>
               </div>
               <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
                 Your Intelligent Learning & Mastery Hub

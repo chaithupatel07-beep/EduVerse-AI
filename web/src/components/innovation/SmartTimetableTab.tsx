@@ -100,7 +100,7 @@ export const SmartTimetableTab: React.FC = () => {
         <div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-xs font-semibold mb-2">
             <Sparkles size={14} className="text-yellow-300" />
-            <span>Phase 6.5 Break-Aware AI Smart Timetable</span>
+            <span>Break-Aware AI Smart Timetable</span>
           </div>
           <h2 className="text-2xl font-black">AI Smart Timetable & Study Scheduler</h2>
           <p className="text-blue-100 text-xs mt-1 max-w-xl">

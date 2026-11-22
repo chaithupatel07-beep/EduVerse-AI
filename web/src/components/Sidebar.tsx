@@ -17,6 +17,10 @@ import {
   Activity,
   Layers,
   LucideIcon,
+  FileText,
+  Trophy,
+  Compass,
+  BrainCircuit,
 } from 'lucide-react';
 
 interface NavItem {
@@ -41,11 +45,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, isOpe
   const roleNavItems: Record<string, NavItem[]> = {
     student: [
       { id: 'foundation', label: 'Ecosystem Overview', icon: Layers },
-      { id: 'dashboard', label: 'Student Dashboard', icon: LayoutDashboard },
+      { id: 'dashboard', label: 'Student Command Center', icon: LayoutDashboard },
       { id: 'courses', label: 'My Enrolled Courses', icon: BookOpen },
+      { id: 'materials', label: 'Study Library & Notes', icon: FileText },
       { id: 'ai-tutor', label: 'AI Study Assistant (RAG)', icon: Bot, badge: 'AI' },
       { id: 'quizzes', label: 'Quizzes & Practice', icon: FileCheck2 },
+      { id: 'exam-simulator', label: 'AI Exam Simulator', icon: Sparkles, badge: 'New' },
       { id: 'study-plan', label: 'Personalized Study Plan', icon: CalendarDays },
+      { id: 'gamification', label: 'Gamification & XP', icon: Trophy },
+      { id: 'knowledge-map', label: 'Visual Knowledge Graph', icon: Compass },
       { id: 'profile', label: 'Student Profile', icon: User },
     ],
     teacher: [
@@ -53,25 +61,33 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, isOpe
       { id: 'dashboard', label: 'Educator Dashboard', icon: LayoutDashboard },
       { id: 'classes', label: 'Classrooms & Students', icon: Users },
       { id: 'curriculum', label: 'Curriculum & Resources', icon: BookOpen },
-      { id: 'ai-generator', label: 'AI Quiz & Lesson Plan', icon: Sparkles, badge: 'AI' },
-      { id: 'analytics', label: 'Performance Analytics', icon: BarChart3 },
+      { id: 'assignments', label: 'Assignments & Grading', icon: FileCheck2 },
+      { id: 'ai-generator', label: 'AI Lesson Plan & Copilot', icon: Sparkles, badge: 'AI' },
+      { id: 'analytics', label: 'Class Learning Intelligence', icon: BarChart3 },
+      { id: 'early-warning', label: 'Early-Warning & Alerts', icon: Activity, badge: 'Alert' },
+      { id: 'meetings', label: 'Consultation Meetings', icon: CalendarDays },
+      { id: 'communications', label: 'Parent Inquiries', icon: HeartHandshake },
       { id: 'profile', label: 'Faculty Profile', icon: User },
     ],
     parent: [
       { id: 'foundation', label: 'Ecosystem Overview', icon: Layers },
       { id: 'dashboard', label: 'Family Dashboard', icon: LayoutDashboard },
-      { id: 'children', label: 'Linked Student Profiles', icon: GraduationCap },
-      { id: 'academics', label: 'Academic Performance', icon: BarChart3 },
-      { id: 'communications', label: 'Teacher Collaboration', icon: HeartHandshake },
+      { id: 'ai-advisor', label: 'Parent AI Academic Advisor', icon: Bot, badge: 'AI' },
+      { id: 'academics', label: 'Multilingual Progress Reports', icon: FileText, badge: 'Live' },
+      { id: 'children', label: 'Child Learning Insights', icon: BrainCircuit },
+      { id: 'performance', label: 'Academic Performance & Marks', icon: BarChart3 },
+      { id: 'meetings', label: 'Consultation Meetings', icon: CalendarDays },
+      { id: 'communications', label: 'Teacher Inquiries', icon: HeartHandshake },
       { id: 'profile', label: 'Parent Profile', icon: User },
     ],
     admin: [
       { id: 'foundation', label: 'Ecosystem Overview', icon: Layers },
       { id: 'dashboard', label: 'Institutional Dashboard', icon: LayoutDashboard },
-      { id: 'institutions', label: 'Institution Management', icon: Building2 },
-      { id: 'users', label: 'User Directory & RBAC', icon: Users },
-      { id: 'system-health', label: 'System Health & Audits', icon: Activity },
-      { id: 'security', label: 'Access Control Policies', icon: ShieldCheck },
+      { id: 'institutions', label: 'Curriculum & Class Sections', icon: Building2 },
+      { id: 'enrollment', label: 'Student & Faculty Directory', icon: Users },
+      { id: 'analytics', label: 'Academic & ML Analytics', icon: BarChart3 },
+      { id: 'reports', label: 'Executive Reports & Trends', icon: FileText },
+      { id: 'rag-system', label: 'RAG Vector Indexing', icon: Sparkles, badge: 'ChromaDB' },
       { id: 'profile', label: 'Admin Profile', icon: User },
     ],
   };
@@ -145,14 +161,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, isOpe
           </nav>
         </div>
 
-        {/* Phase 1 Ecosystem Note */}
+        {/* Ecosystem Active Status Note */}
         <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/60 text-center">
           <div className="flex items-center justify-center gap-1.5 text-blue-600 mb-1">
             <ShieldCheck size={14} />
-            <span className="text-[11px] font-bold">Phase 1 Foundation</span>
+            <span className="text-[11px] font-bold">EduVerse Ecosystem</span>
           </div>
           <p className="text-[10px] text-slate-500 leading-tight">
-            Architecture Ready • 4 Roles Synchronized
+            Production Active • 4 Portals Synchronized
           </p>
         </div>
       </aside>

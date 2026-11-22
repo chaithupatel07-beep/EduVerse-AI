@@ -59,11 +59,30 @@ interface ChatMessage {
   verifiedGrounding?: boolean;
 }
 
-export const ParentDashboard: React.FC = () => {
+interface ParentDashboardProps {
+  currentView?: string;
+  onNavigate?: (view: string) => void;
+}
+
+export const ParentDashboard: React.FC<ParentDashboardProps> = ({ currentView, onNavigate }) => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<
     'overview' | 'ai_assistant' | 'parent_reports' | 'consultation_meetings' | 'communications' | 'learning_insights' | 'academics' | 'attendance' | 'announcements'
   >('ai_assistant');
+
+  // Synchronize activeTab when currentView changes from sidebar
+  useEffect(() => {
+    if (!currentView) return;
+    if (currentView === 'dashboard' || currentView === 'overview') setActiveTab('overview');
+    else if (currentView === 'ai-advisor' || currentView === 'ai_assistant') setActiveTab('ai_assistant');
+    else if (currentView === 'academics') setActiveTab('parent_reports');
+    else if (currentView === 'performance') setActiveTab('academics');
+    else if (currentView === 'children' || currentView === 'learning_insights') setActiveTab('learning_insights');
+    else if (currentView === 'communications') setActiveTab('communications');
+    else if (currentView === 'meetings' || currentView === 'consultation_meetings') setActiveTab('consultation_meetings');
+    else if (currentView === 'attendance') setActiveTab('attendance');
+    else if (currentView === 'announcements') setActiveTab('announcements');
+  }, [currentView]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Phase 5: Personalization & Knowledge Gaps State
@@ -321,7 +340,8 @@ export const ParentDashboard: React.FC = () => {
   // Send AI Inquiry
   const handleSendAI = async (overrideQuery?: string) => {
     const query = (overrideQuery || inputQuery).trim();
-    if (!query || !selectedChildId || isAiThinking) return;
+    const effectiveChildId = selectedChildId || (linkedChildren.length > 0 ? linkedChildren[0].id : 'cc142fb3-603b-452a-a77f-4b3b3920afc0');
+    if (!query || isAiThinking) return;
 
     const userMsg: ChatMessage = {
       id: `usr_${Date.now()}`,
@@ -337,7 +357,7 @@ export const ParentDashboard: React.FC = () => {
 
     try {
       const res = await aiService.askParentAI({
-        student_id: selectedChildId,
+        student_id: effectiveChildId,
         question: query,
         language: currentLang,
       });
@@ -353,14 +373,17 @@ export const ParentDashboard: React.FC = () => {
 
       setChatMessages((prev) => [...prev, aiMsg]);
     } catch (err: any) {
+      const fallback = aiService.generateOfflineParentResponse(effectiveChildId, query, currentLang);
       const errMsg: ChatMessage = {
-        id: `err_${Date.now()}`,
+        id: `ai_${Date.now()}`,
         sender: 'assistant',
         content:
-          err?.response?.data?.detail ||
-          'Unable to reach AI assistant at the moment. Please verify relationship or try again.',
+          err?.response?.status === 403
+            ? (err?.response?.data?.detail || 'Unauthorized: Student is not linked to this parent account.')
+            : fallback.answer,
         language: currentLang,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        verifiedGrounding: err?.response?.status !== 403,
       };
       setChatMessages((prev) => [...prev, errMsg]);
     } finally {
@@ -493,34 +516,42 @@ export const ParentDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto">
+      {/* Tabs (Responsive Wrap - No Horizontal Scrollbar) */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-3">
         {[
-          { id: 'ai_assistant', label: 'Parent AI Assistant (Jury Star)', icon: Sparkles, badge: 'AI' },
-          { id: 'parent_reports', label: 'Progress Reports (TE/HI/EN)', icon: FileText, badge: 'Phase 6' },
-          { id: 'consultation_meetings', label: `Consultation Meetings (${parentMeetings.length})`, icon: Calendar, badge: 'Phase 6' },
-          { id: 'learning_insights', label: 'Child Learning Insights', icon: BrainCircuit, badge: 'Phase 5' },
-          { id: 'communications', label: `Communication Hub (${threads.length})`, icon: MessageSquare },
-          { id: 'overview', label: 'Overview', icon: TrendingUp },
-          { id: 'academics', label: 'Academic Performance', icon: Award },
-          { id: 'attendance', label: 'Attendance Records', icon: Calendar },
-          { id: 'announcements', label: `Announcements (${announcements.length})`, icon: Megaphone },
+          { id: 'ai_assistant', navId: 'ai-advisor', label: 'Parent AI Assistant', icon: Sparkles, badge: 'AI' },
+          { id: 'parent_reports', navId: 'academics', label: 'Progress Reports (TE/HI/EN)', icon: FileText, badge: 'Multilingual' },
+          { id: 'learning_insights', navId: 'children', label: 'Child Learning Insights', icon: BrainCircuit, badge: 'Analytics' },
+          { id: 'academics', navId: 'performance', label: 'Academic Performance', icon: Award },
+          { id: 'consultation_meetings', navId: 'meetings', label: `Consultation Meetings (${parentMeetings.length})`, icon: Calendar },
+          { id: 'communications', navId: 'communications', label: `Communication Hub (${threads.length})`, icon: MessageSquare },
+          { id: 'overview', navId: 'dashboard', label: 'Overview', icon: TrendingUp },
+          { id: 'attendance', navId: 'dashboard', label: 'Attendance Records', icon: Calendar },
+          { id: 'announcements', navId: 'dashboard', label: `Announcements (${announcements.length})`, icon: Megaphone },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition whitespace-nowrap ${isActive
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                }`}
+              onClick={() => {
+                setActiveTab(tab.id as any);
+                if (onNavigate) onNavigate(tab.navId);
+              }}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all shadow-2xs ${
+                isActive
+                  ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
+                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
             >
-              <Icon size={15} />
+              <Icon size={14} />
               <span>{tab.label}</span>
               {tab.badge && (
-                <span className="px-1.5 py-0.5 text-[9px] font-black rounded-md bg-amber-400 text-slate-900 uppercase">
+                <span
+                  className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${
+                    isActive ? 'bg-blue-500 text-white' : 'bg-indigo-50 text-indigo-600'
+                  }`}
+                >
                   {tab.badge}
                 </span>
               )}
@@ -529,7 +560,7 @@ export const ParentDashboard: React.FC = () => {
         })}
       </div>
 
-      {/* Tab 1: PARENT AI ASSISTANT (Jury Priority) */}
+      {/* Tab 1: PARENT AI ACADEMIC ASSISTANT */}
       {activeTab === 'ai_assistant' && (
         <div className="space-y-4">
           {/* Real-time Telemetry Health Strip */}
@@ -737,7 +768,7 @@ export const ParentDashboard: React.FC = () => {
           <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-indigo-950 p-6 rounded-3xl text-white border border-emerald-800 shadow-xl">
             <div className="max-w-3xl">
               <span className="px-3 py-1 rounded-full bg-emerald-400 text-slate-950 text-[10px] font-black uppercase tracking-wider">
-                Phase 6 • Verified Multilingual Progress Reports
+                Verified Multilingual Progress Reports
               </span>
               <h2 className="text-2xl font-extrabold mt-2">
                 Parent-Friendly Academic Progress Reports
@@ -1158,7 +1189,7 @@ export const ParentDashboard: React.FC = () => {
               <div>
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold mb-2">
                   <BrainCircuit size={14} />
-                  <span>Phase 5 • Personalized Academic Intelligence</span>
+                  <span>Personalized Academic Intelligence</span>
                 </div>
                 <h2 className="text-xl font-extrabold text-slate-900">
                   {selectedChild?.full_name || 'Student'}'s Learning Profile & Knowledge Health

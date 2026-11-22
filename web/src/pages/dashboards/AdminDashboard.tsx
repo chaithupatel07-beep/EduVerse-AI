@@ -42,11 +42,29 @@ import {
   InstitutionalReport,
 } from '../../services/adminIntelligenceService';
 
-export const AdminDashboard: React.FC = () => {
+interface AdminDashboardProps {
+  currentView?: string;
+  onNavigate?: (view: string) => void;
+}
+
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentView, onNavigate }) => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<
     'overview' | 'academic_analytics' | 'institutional_reports' | 'communication_analytics' | 'courses' | 'classes' | 'enrollment' | 'announcements' | 'rag_management'
   >('overview');
+
+  // Synchronize activeTab when currentView changes from sidebar
+  useEffect(() => {
+    if (!currentView) return;
+    if (currentView === 'dashboard' || currentView === 'overview') setActiveTab('overview');
+    else if (currentView === 'institutions' || currentView === 'classes' || currentView === 'courses') setActiveTab('courses');
+    else if (currentView === 'enrollment' || currentView === 'users') setActiveTab('enrollment');
+    else if (currentView === 'analytics' || currentView === 'academic_analytics') setActiveTab('academic_analytics');
+    else if (currentView === 'reports' || currentView === 'institutional_reports') setActiveTab('institutional_reports');
+    else if (currentView === 'communication-analytics' || currentView === 'communication_analytics') setActiveTab('communication_analytics');
+    else if (currentView === 'rag-system' || currentView === 'rag_management') setActiveTab('rag_management');
+    else if (currentView === 'announcements') setActiveTab('announcements');
+  }, [currentView]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Phase 5: Institutional Analytics & ML Status
@@ -376,26 +394,29 @@ export const AdminDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto">
+      {/* Tabs (Responsive Wrap - No Horizontal Scrollbar) */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-3">
         {[
-          { id: 'overview', label: 'Overview' },
-          { id: 'academic_analytics', label: 'Academic & ML Analytics (Phase 5)' },
-          { id: 'institutional_reports', label: 'Institutional Reports (Phase 6)' },
-          { id: 'communication_analytics', label: 'Communication Analytics (Phase 6)' },
-          { id: 'rag_management', label: 'RAG Vector Indexing (ChromaDB)' },
-          { id: 'courses', label: `Courses (${courses.length})` },
-          { id: 'classes', label: `Sections (${classrooms.length})` },
-          { id: 'enrollment', label: 'Student Enrollment' },
-          { id: 'announcements', label: `Announcements (${announcements.length})` },
+          { id: 'overview', navId: 'dashboard', label: 'Institutional Overview' },
+          { id: 'academic_analytics', navId: 'analytics', label: 'Academic & ML Analytics' },
+          { id: 'institutional_reports', navId: 'reports', label: 'Institutional Reports & Trends' },
+          { id: 'communication_analytics', navId: 'analytics', label: 'Communication Analytics' },
+          { id: 'rag_management', navId: 'rag-system', label: 'RAG Vector Indexing (ChromaDB)' },
+          { id: 'courses', navId: 'institutions', label: `Courses (${courses.length})` },
+          { id: 'classes', navId: 'institutions', label: `Sections (${classrooms.length})` },
+          { id: 'enrollment', navId: 'enrollment', label: 'Student Enrollment' },
+          { id: 'announcements', navId: 'dashboard', label: `Announcements (${announcements.length})` },
         ].map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition whitespace-nowrap ${
+            onClick={() => {
+              setActiveTab(tab.id as any);
+              if (onNavigate) onNavigate(tab.navId);
+            }}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all shadow-2xs ${
               activeTab === tab.id
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
+                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900'
             }`}
           >
             {tab.label}
@@ -411,7 +432,7 @@ export const AdminDashboard: React.FC = () => {
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                   <Sparkles size={16} className="text-indigo-600" />
-                  <span>Phase 6.5 Innovation Adoption & Learning Metrics</span>
+                  <span>Digital Innovation Adoption & Learning Metrics</span>
                 </h3>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700">
                   Ecosystem Telemetry
@@ -513,7 +534,7 @@ export const AdminDashboard: React.FC = () => {
             <div className="relative z-10 max-w-3xl">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-xs font-semibold tracking-wide mb-3">
                 <BrainCircuit size={14} className="text-blue-300" />
-                <span>Phase 5 • Institutional Academic Analytics & ML Telemetry</span>
+                <span>Institutional Academic Analytics & ML Telemetry</span>
               </div>
               <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
                 Academic Performance & Predictive Governance
@@ -678,7 +699,7 @@ export const AdminDashboard: React.FC = () => {
             <div className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-400/20 text-xs text-indigo-100 flex items-start gap-3">
               <ShieldCheck size={20} className="text-emerald-400 shrink-0 mt-0.5" />
               <div>
-                <p className="font-bold text-white text-xs">Hackathon Academic Integrity & Transparency Protocol</p>
+                <p className="font-bold text-white text-xs">Academic Integrity & Model Governance Policy</p>
                 <p className="text-[11px] text-indigo-200 mt-0.5 leading-relaxed">
                   To prevent deceptive AI claims, predictive performance is strictly calibrated against real academic data.
                   If a student has fewer than <strong>3 quizzes</strong>, <strong>2 assignments</strong>, or <strong>3 attendance records</strong>, EduVerse AI transparently disables statistical ML regression and presents an explicit rule-based heuristic with honest uncertainty intervals.
@@ -695,7 +716,7 @@ export const AdminDashboard: React.FC = () => {
           <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-900 p-6 sm:p-8 rounded-3xl text-white shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="max-w-2xl">
               <span className="px-3 py-1 rounded-full bg-blue-400 text-slate-950 text-[10px] font-black uppercase tracking-wider">
-                Phase 6 • Executive Intelligence
+                Executive Academic Intelligence
               </span>
               <h2 className="text-2xl font-extrabold mt-2">Institutional Intelligence Reports</h2>
               <p className="text-xs text-blue-200 mt-1">

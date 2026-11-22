@@ -44,13 +44,13 @@ const MainLayout: React.FC = () => {
   const renderDashboardByRole = () => {
     switch (user.role) {
       case 'student':
-        return <StudentDashboard />;
+        return <StudentDashboard currentView={currentView} onNavigate={setCurrentView} />;
       case 'teacher':
-        return <TeacherDashboard />;
+        return <TeacherDashboard currentView={currentView} onNavigate={setCurrentView} />;
       case 'parent':
-        return <ParentDashboard />;
+        return <ParentDashboard currentView={currentView} onNavigate={setCurrentView} />;
       case 'admin':
-        return <AdminDashboard />;
+        return <AdminDashboard currentView={currentView} onNavigate={setCurrentView} />;
       default:
         return <FoundationDashboard onNavigate={setCurrentView} />;
     }
@@ -61,49 +61,48 @@ const MainLayout: React.FC = () => {
     switch (currentView) {
       case 'foundation':
         return <FoundationDashboard onNavigate={setCurrentView} />;
-      case 'dashboard':
-        return renderDashboardByRole();
       case 'profile':
         return <Profile />;
       case 'verify-email':
         return <EmailVerification onNavigate={setCurrentView} />;
       case 'access-denied':
         return <AccessDenied onNavigate={setCurrentView} />;
+
+      // Student navigation pages
       case 'courses':
+      case 'materials':
       case 'ai-tutor':
       case 'quizzes':
+      case 'exam-simulator':
+      case 'notes-scanner':
       case 'study-plan':
-        return (
-          <ProtectedRoute allowedRoles={['student', 'admin']} onNavigate={setCurrentView}>
-            {renderDashboardByRole()}
-          </ProtectedRoute>
-        );
+      case 'gamification':
+      case 'knowledge-map':
+      // Teacher navigation pages
       case 'classes':
       case 'curriculum':
+      case 'assignments':
       case 'ai-generator':
-      case 'analytics':
-        return (
-          <ProtectedRoute allowedRoles={['teacher', 'admin']} onNavigate={setCurrentView}>
-            {renderDashboardByRole()}
-          </ProtectedRoute>
-        );
-      case 'children':
+      case 'early-warning':
+      // Parent navigation pages
+      case 'ai-advisor':
       case 'academics':
+      case 'children':
+      case 'performance':
+      // Cross-role & Admin navigation pages
+      case 'meetings':
       case 'communications':
-        return (
-          <ProtectedRoute allowedRoles={['parent', 'admin']} onNavigate={setCurrentView}>
-            {renderDashboardByRole()}
-          </ProtectedRoute>
-        );
+      case 'analytics':
       case 'institutions':
+      case 'enrollment':
       case 'users':
+      case 'reports':
+      case 'rag-system':
       case 'system-health':
       case 'security':
-        return (
-          <ProtectedRoute allowedRoles={['admin']} onNavigate={setCurrentView}>
-            <AdminDashboard />
-          </ProtectedRoute>
-        );
+      case 'dashboard':
+        return renderDashboardByRole();
+
       default:
         return <NotFound onNavigate={setCurrentView} />;
     }

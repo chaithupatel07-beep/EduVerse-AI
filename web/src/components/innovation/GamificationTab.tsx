@@ -73,7 +73,7 @@ export const GamificationTab: React.FC = () => {
         <div className="space-y-2">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-semibold">
             <Trophy size={14} className="text-yellow-300" />
-            <span>Phase 6.5 Verified Academic Gamification</span>
+            <span>Verified Academic Gamification</span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-black">
             Level {profile.current_level} • {profile.level_title}

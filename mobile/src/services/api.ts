@@ -23,6 +23,8 @@ export const mobileApi = axios.create({
   timeout: 10000,
 });
 
+export const apiClient = mobileApi;
+
 let currentAuthToken: string | null = null;
 
 export const setAuthToken = (token: string | null) => {

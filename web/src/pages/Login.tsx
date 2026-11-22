@@ -95,7 +95,7 @@ export const Login: React.FC<LoginProps> = ({ onNavigate }) => {
         <div className="lg:col-span-6 text-white space-y-6 px-4">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-400/20 text-blue-400 text-xs font-semibold backdrop-blur-sm">
             <Sparkles size={14} />
-            <span>EduVerse AI • Phase 2 Security & RBAC</span>
+            <span>EduVerse AI • Enterprise Security & RBAC</span>
           </div>
 
           <h1 className="text-3xl lg:text-4xl font-extrabold tracking-tight leading-tight">
@@ -106,11 +106,11 @@ export const Login: React.FC<LoginProps> = ({ onNavigate }) => {
             Role authorization is verified authoritatively by PostgreSQL and Firebase Admin SDK on every request. Client roles are never blindly trusted.
           </p>
 
-          {/* Quick Demo Access Bar for Judges */}
+          {/* Quick Role Access Portals */}
           <div className="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-4 backdrop-blur-md space-y-3">
             <p className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center justify-between">
-              <span>Instant Hackathon Role Switcher</span>
-              <span className="text-[10px] text-blue-400 font-normal">Pre-seeded DB Accounts</span>
+              <span>Portal Role Accounts</span>
+              <span className="text-[10px] text-blue-400 font-normal">Verified Institution Profiles</span>
             </p>
 
             <div className="grid grid-cols-2 gap-2">

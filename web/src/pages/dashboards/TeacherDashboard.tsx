@@ -59,11 +59,32 @@ import {
 } from '../../services/parentIntelligenceService';
 import { EarlyWarningTab } from '../../components/innovation/EarlyWarningTab';
 
-export const TeacherDashboard: React.FC = () => {
+interface TeacherDashboardProps {
+  currentView?: string;
+  onNavigate?: (view: string) => void;
+}
+
+export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ currentView, onNavigate }) => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<
     'classes' | 'early_warning' | 'class_analytics' | 'ai_copilot' | 'meetings' | 'parent_inquiries' | 'materials' | 'assignments' | 'quizzes' | 'attendance' | 'announcements'
   >('classes');
+
+  // Synchronize activeTab when currentView changes from sidebar
+  useEffect(() => {
+    if (!currentView) return;
+    if (currentView === 'dashboard' || currentView === 'classes') setActiveTab('classes');
+    else if (currentView === 'curriculum' || currentView === 'materials') setActiveTab('materials');
+    else if (currentView === 'assignments') setActiveTab('assignments');
+    else if (currentView === 'quizzes') setActiveTab('quizzes');
+    else if (currentView === 'ai-generator' || currentView === 'ai_copilot') setActiveTab('ai_copilot');
+    else if (currentView === 'analytics' || currentView === 'class_analytics') setActiveTab('class_analytics');
+    else if (currentView === 'early-warning' || currentView === 'early_warning') setActiveTab('early_warning');
+    else if (currentView === 'meetings') setActiveTab('meetings');
+    else if (currentView === 'communications' || currentView === 'parent_inquiries') setActiveTab('parent_inquiries');
+    else if (currentView === 'attendance') setActiveTab('attendance');
+    else if (currentView === 'announcements') setActiveTab('announcements');
+  }, [currentView]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Phase 5: Class Learning Intelligence State
@@ -660,28 +681,32 @@ export const TeacherDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto">
+      {/* Navigation Tabs (Responsive Wrap - No Horizontal Scrollbar) */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-3">
         {[
-          { id: 'classes', label: 'My Classrooms & Students' },
-          { id: 'early_warning', label: 'Early-Warning & Interventions (Phase 6.5)' },
-          { id: 'class_analytics', label: 'Class Learning Intelligence (Phase 5)' },
-          { id: 'ai_copilot', label: 'AI Educator Copilot (Phase 6)' },
-          { id: 'meetings', label: `Consultation Meetings (${meetingsList.length})` },
-          { id: 'parent_inquiries', label: `Parent Inquiries (${parentThreads.length})` },
-          { id: 'materials', label: `Study Materials (${materials.length})` },
-          { id: 'assignments', label: `Assignments (${assignments.length})` },
-          { id: 'quizzes', label: `Quizzes (${quizzes.length})` },
-          { id: 'attendance', label: 'Batch Attendance' },
-          { id: 'announcements', label: `Announcements (${announcements.length})` },
+          { id: 'classes', navId: 'classes', label: 'My Classrooms & Students' },
+          { id: 'materials', navId: 'curriculum', label: `Study Materials (${materials.length})` },
+          { id: 'assignments', navId: 'assignments', label: `Assignments (${assignments.length})` },
+          { id: 'ai_copilot', navId: 'ai-generator', label: 'AI Educator Copilot' },
+          { id: 'class_analytics', navId: 'analytics', label: 'Class Learning Intelligence' },
+          { id: 'early_warning', navId: 'early-warning', label: 'Early-Warning & Interventions' },
+          { id: 'meetings', navId: 'meetings', label: `Consultation Meetings (${meetingsList.length})` },
+          { id: 'parent_inquiries', navId: 'communications', label: `Parent Inquiries (${parentThreads.length})` },
+          { id: 'quizzes', navId: 'quizzes', label: `Quizzes (${quizzes.length})` },
+          { id: 'attendance', navId: 'attendance', label: 'Batch Attendance' },
+          { id: 'announcements', navId: 'announcements', label: `Announcements (${announcements.length})` },
         ].map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition whitespace-nowrap ${activeTab === tab.id
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-              }`}
+            onClick={() => {
+              setActiveTab(tab.id as any);
+              if (onNavigate) onNavigate(tab.navId);
+            }}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shadow-2xs ${
+              activeTab === tab.id
+                ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
+                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+            }`}
           >
             {tab.label}
           </button>
@@ -768,7 +793,7 @@ export const TeacherDashboard: React.FC = () => {
             <div className="relative z-10 max-w-3xl">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-xs font-semibold tracking-wide mb-3">
                 <BrainCircuit size={14} className="text-blue-300" />
-                <span>Phase 5 • Predictive Classroom Intelligence</span>
+                <span>Predictive Classroom Intelligence</span>
               </div>
               <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
                 Class Academic Analytics & Knowledge Gaps
@@ -970,7 +995,7 @@ export const TeacherDashboard: React.FC = () => {
           <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-blue-950 p-6 rounded-3xl text-white border border-indigo-800 shadow-xl">
             <div className="max-w-3xl">
               <span className="px-3 py-1 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black uppercase tracking-wider">
-                Phase 6 • Advanced Teacher AI Copilot
+                Advanced Teacher AI Copilot
               </span>
               <h2 className="text-2xl font-extrabold mt-2">Faculty Intelligence & Pedagogical Copilot</h2>
               <p className="text-xs text-indigo-200 mt-1">
@@ -979,7 +1004,7 @@ export const TeacherDashboard: React.FC = () => {
             </div>
 
             {/* Sub-navigation */}
-            <div className="flex items-center gap-2 mt-5 pt-4 border-t border-indigo-900/60 overflow-x-auto">
+            <div className="flex flex-wrap items-center gap-2 mt-5 pt-4 border-t border-indigo-900/60">
               {[
                 { id: 'lesson_plan', label: '11-Section Lesson Planner', icon: BookOpen },
                 { id: 'question_paper', label: 'Question Paper & Answer Key', icon: FileSpreadsheet },
@@ -1577,7 +1602,7 @@ export const TeacherDashboard: React.FC = () => {
                 <div>
                   <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
                     <Target size={14} className="text-rose-600" />
-                    <span>Grounded Remedial Guidance (Phase 5 Gap Linkage)</span>
+                    <span>Grounded Remedial Guidance & Knowledge Gaps</span>
                   </h3>
                   <p className="text-[11px] text-slate-500">
                     Extracts verified knowledge gaps across enrolled students and provides structured cohort remediation.

@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  # 1. PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: eduverse-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-eduverse}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-eduverse_password}
+      POSTGRES_DB: ${POSTGRES_DB:-eduverse}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-eduverse} -d ${POSTGRES_DB:-eduverse}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 2. ChromaDB Vector Database
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: eduverse-chroma
+    restart: unless-stopped
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+
+  # 3. FastAPI Python Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: eduverse-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-eduverse}:${POSTGRES_PASSWORD:-eduverse_password}@postgres:5432/${POSTGRES_DB:-eduverse}
+      CHROMA_HOST: chromadb
+      CHROMA_PORT: 8000
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      JWT_SECRET: ${JWT_SECRET:-eduverse_jwt_secret_production_2026_super_secure}
+      ENVIRONMENT: production
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/uploads:/app/uploads
+      - ./backend/data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      chromadb:
+        condition: service_started
+
+  # 4. Vite React Web Frontend with Nginx SPA Proxy
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: eduverse-web
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  chroma_data:

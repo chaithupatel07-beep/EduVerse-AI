@@ -53,7 +53,7 @@ export default function MobileHomeScreen() {
             <Text style={styles.logoutBtnText}>Sign Out</Text>
           </TouchableOpacity>
         </View>
-        <RoleComponent user={currentUser} />
+        <RoleComponent user={currentUser} onLogout={() => setCurrentUser(null)} />
       </View>
     );
   }
@@ -80,7 +80,7 @@ export default function MobileHomeScreen() {
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.header}>
         <View style={styles.badge}>
-          <Text style={styles.badgeText}>EduVerse AI Mobile • Phase 2</Text>
+          <Text style={styles.badgeText}>EduVerse AI Mobile • Enterprise Edition</Text>
         </View>
         <Text style={styles.title}>EduVerse Mobile Ecosystem</Text>
         <Text style={styles.subtitle}>Authoritative Multi-Role Authentication & Access</Text>

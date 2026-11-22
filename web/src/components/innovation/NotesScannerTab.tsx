@@ -147,7 +147,7 @@ export const NotesScannerTab: React.FC = () => {
         <div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-xs font-semibold mb-2">
             <Sparkles size={14} className="text-yellow-300" />
-            <span>Phase 6.5 Smart Notes Scanner & Grounded Doubt Solver</span>
+            <span>Smart Notes Scanner & Doubt Solver</span>
           </div>
           <h2 className="text-2xl font-black">Smart Notes Scanner & Doubt Solver</h2>
           <p className="text-cyan-100 text-xs mt-1 max-w-xl">

@@ -123,7 +123,7 @@ export const EarlyWarningTab: React.FC = () => {
         <div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-xs font-semibold mb-2">
             <ShieldAlert size={14} className="text-rose-300" />
-            <span>Phase 6.5 Intelligent Early-Warning & Intervention System</span>
+            <span>Intelligent Early-Warning & Intervention System</span>
           </div>
           <h2 className="text-2xl font-black">Early-Warning & Intervention Support</h2>
           <p className="text-rose-100 text-xs mt-1 max-w-xl">

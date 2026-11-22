@@ -367,7 +367,7 @@ export const ExamSimulatorTab: React.FC = () => {
         <div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-xs font-semibold mb-2">
             <Sparkles size={14} className="text-yellow-300" />
-            <span>Phase 6.5 AI Smart Examination Simulator</span>
+            <span>AI Smart Examination Simulator</span>
           </div>
           <h2 className="text-2xl font-black">AI Mock Examination Simulator</h2>
           <p className="text-blue-100 text-xs mt-1 max-w-xl">

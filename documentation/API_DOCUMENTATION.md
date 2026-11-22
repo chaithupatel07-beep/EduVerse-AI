@@ -1,151 +1,102 @@
-# EduVerse AI – REST API Documentation & RBAC Specification
+# EduVerse AI – Complete REST API Reference (Phase 7 Final)
 
-Base URL: `/api/v1`
+## 1. Authentication & Security Endpoints (`/api/v1/auth`)
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| `POST` | `/auth/login` | Public | Authenticate user with email and password; returns JWT tokens |
+| `POST` | `/auth/register-profile` | Public | Register user profile with role-specific profile records |
+| `POST` | `/auth/token/refresh` | Public | Refresh expired access token using valid refresh token |
+| `POST` | `/auth/logout` | Authenticated | Revoke active user session and refresh token |
+| `GET` | `/auth/me` | Authenticated | Retrieve current user profile and institutional role details |
+| `PUT` | `/auth/me` | Authenticated | Update user profile fields (excludes unauthorized role escalation) |
+| `POST` | `/auth/firebase-verify` | Public | Exchange Firebase Auth ID token for internal session |
 
-All protected endpoints require the HTTP Header:
-```
-Authorization: Bearer <access_token>
-```
+## 2. Academic Core Endpoints (`/api/v1/academic`)
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| `GET` | `/academic/courses` | Authenticated | List all active courses in institution |
+| `POST` | `/academic/courses` | Admin | Create a new academic course |
+| `GET` | `/academic/classrooms` | Authenticated | List classroom cohort sections |
+| `POST` | `/academic/classrooms` | Admin | Create a new classroom cohort section |
+| `POST` | `/academic/enroll` | Admin | Enroll a student into a classroom cohort |
+| `GET` | `/academic/my-classes` | Teacher / Student | Retrieve user-specific enrolled or assigned classrooms |
 
----
+## 3. Learning Materials & RAG Indexing (`/api/v1/materials`)
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| `POST` | `/materials/upload` | Teacher / Admin | Upload syllabus PDF or lecture slides |
+| `GET` | `/materials` | Authenticated | List authorized study materials |
+| `GET` | `/materials/{id}/download` | Authenticated | Securely download educational material |
+| `POST` | `/materials/{id}/index-rag` | Admin | Chunk and embed document into ChromaDB vector store |
 
-## 1. System Health
+## 4. Assignments & Evaluations (`/api/v1/assignments`)
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| `POST` | `/assignments` | Teacher | Publish assignment with due date and maximum marks |
+| `GET` | `/assignments` | Authenticated | List class assignments |
+| `POST` | `/assignments/{id}/submit` | Student | Submit assignment text and attachment |
+| `GET` | `/assignments/{id}/submissions`| Teacher | View all student submissions for an assignment |
+| `POST` | `/assignments/submissions/{id}/evaluate` | Teacher | Grade submission with awarded marks and feedback |
 
-### `GET /health`
-Returns the status of the backend API, environment, and database connectivity.
-- **Access**: Public
-- **Response**: `200 OK`
-```json
-{
-  "status": "healthy",
-  "version": "1.0.0",
-  "environment": "development",
-  "database": {
-    "status": "connected",
-    "dialect": "sqlite"
-  },
-  "timestamp": "2026-11-21T08:50:00.000000Z"
-}
-```
+## 5. Formative Quizzes (`/api/v1/quizzes`)
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| `POST` | `/quizzes` | Teacher | Create formative quiz with questions and answer keys |
+| `GET` | `/quizzes` | Authenticated | List authorized quizzes |
+| `POST` | `/quizzes/{id}/attempt` | Student | Submit quiz answers; instant objective score calculation |
+| `GET` | `/quizzes/{id}/attempts` | Teacher / Student | Fetch historical quiz attempt scores |
 
----
+## 6. Attendance & Analytics (`/api/v1/attendance`)
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| `POST` | `/attendance/sessions` | Teacher | Create daily attendance session for a class |
+| `POST` | `/attendance/records/batch` | Teacher | Submit attendance roll (present, absent, late, excused) |
+| `GET` | `/attendance/student/{id}/summary` | Authenticated | Retrieve student attendance percentage |
 
-## 2. Authentication Endpoints
+## 7. AI Generative Tutoring & Multilingual Chat (`/api/v1/ai`)
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| `POST` | `/ai/chat` | Student | Multilingual AI Tutor question answering with RAG |
+| `POST` | `/ai/generate-quiz` | Teacher / Student | Generate instant 5-question formative quiz from topic |
+| `POST` | `/ai/language-preference` | Authenticated | Save preferred language (Telugu `te`, Hindi `hi`, English `en`) |
+| `GET` | `/ai/parent/child-telemetry` | Parent | Grounded academic health telemetry for Parent AI Companion |
+| `POST` | `/ai/parent/chat` | Parent | Grounded Parent AI question answering |
 
-### `POST /auth/register`
-Creates a new account in one of the 4 roles (`student`, `teacher`, `parent`, `admin`).
-- **Access**: Public
-- **Request Body**:
-```json
-{
-  "email": "student.test@eduverse.io",
-  "password": "Password123!",
-  "full_name": "Jordan Smith",
-  "role": "student",
-  "institution_code": "OGA-2026",
-  "grade_level": "Grade 11 - STEM"
-}
-```
-- **Response**: `201 Created`
+## 8. Phase 5 Personalization & Machine Learning (`/api/v1/personalization` & `/analytics`)
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| `GET` | `/personalization/profile` | Student | Retrieve student learning profile, GPA, and learning pace |
+| `GET` | `/personalization/knowledge-gaps` | Student / Teacher | List detected knowledge gaps and recommendations |
+| `POST` | `/personalization/study-plan/generate` | Student | Generate dynamic weekly study plan |
+| `POST` | `/personalization/adaptive/start` | Student | Initialize real-time adaptive learning session |
+| `POST` | `/personalization/adaptive/submit` | Student | Submit responses and compute next difficulty tier |
+| `GET` | `/analytics/student/{id}/prediction` | Authenticated | Academic predictive projection with transparent rule fallback |
+| `GET` | `/analytics/model-status` | Admin | Machine learning training status and dataset size |
 
----
+## 9. Phase 6 Educator Copilot & Parent Reports (`/api/v1/teacher-ai` & `/parent-ai`)
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| `POST` | `/teacher-ai/lesson-plan/generate` | Teacher | Generate 11-section structured lesson plan in EN/TE/HI |
+| `POST` | `/teacher-ai/question-paper/generate` | Teacher | Generate exam question paper with Bloom taxonomy |
+| `POST` | `/teacher-ai/evaluate-submission` | Teacher | Formative evaluation review safeguard |
+| `POST` | `/parent-ai/progress-report/generate` | Parent / Teacher | Generate verified bi-weekly progress report in EN/TE/HI |
+| `POST` | `/parent-ai/meetings/request` | Parent | Request parent-teacher consultation meeting |
 
-### `POST /auth/login`
-Authenticates a user via email and password, returning JWT access and refresh tokens.
-- **Access**: Public
-- **Request Body**:
-```json
-{
-  "email": "teacher@eduverse.io",
-  "password": "Password123!"
-}
-```
-- **Response**: `200 OK`
-```json
-{
-  "success": true,
-  "message": "Login successful.",
-  "data": {
-    "tokens": {
-      "access_token": "eyJhbGciOi...",
-      "refresh_token": "eyJhbGciOi...",
-      "token_type": "bearer",
-      "expires_in": 86400
-    },
-    "user": {
-      "id": "e0030560-6dd8-48b2-b153-f725ce781186",
-      "email": "teacher@eduverse.io",
-      "full_name": "Dr. Sarah Jenkins",
-      "role": "teacher",
-      "subject_specialization": "Physics & Computer Science",
-      "is_active": true,
-      "is_verified": true
-    }
-  }
-}
-```
-
----
-
-### `POST /auth/firebase-login`
-Authenticates with a Firebase ID token. Creates user account on first sign-in if not yet registered.
-- **Access**: Public
-- **Request Body**:
-```json
-{
-  "id_token": "firebase-id-token-string",
-  "role": "student"
-}
-```
-- **Response**: `200 OK`
-
----
-
-### `POST /auth/refresh`
-Rotates and issues a new access token using a valid refresh token.
-- **Access**: Public
-- **Request Body**:
-```json
-{
-  "refresh_token": "eyJhbGciOi..."
-}
-```
-- **Response**: `200 OK`
-
----
-
-### `POST /auth/logout`
-Invalidates the current session's refresh token in the database.
-- **Access**: Authenticated User
-
----
-
-### `GET /auth/me`
-Retrieves the profile of the currently authenticated user.
-- **Access**: Authenticated User
-- **Response**: `200 OK`
-
----
-
-## 3. User & RBAC Management
-
-### `GET /users/profile`
-Retrieves the full profile of the authenticated user.
-- **Access**: Authenticated User
-
-### `PUT /users/profile`
-Updates mutable profile fields: `full_name`, `phone`, `bio`, `avatar_url`, `grade_level` (student only), `subject_specialization` (teacher only).
-- **Access**: Authenticated User
-
----
-
-## 4. RBAC Verification Endpoints Matrix
-
-These endpoints verify role-based enforcement at runtime:
-
-| Endpoint | Student Access | Teacher Access | Parent Access | Admin Access | Unauthenticated |
-|---|---|---|---|---|---|
-| `GET /users/role-test/student` | ✅ `200 OK` | ❌ `403 Forbidden` | ❌ `403 Forbidden` | ✅ `200 OK` | ❌ `401 Unauthorized` |
-| `GET /users/role-test/teacher` | ❌ `403 Forbidden` | ✅ `200 OK` | ❌ `403 Forbidden` | ✅ `200 OK` | ❌ `401 Unauthorized` |
-| `GET /users/role-test/parent` | ❌ `403 Forbidden` | ❌ `403 Forbidden` | ✅ `200 OK` | ✅ `200 OK` | ❌ `401 Unauthorized` |
-| `GET /users/role-test/admin` | ❌ `403 Forbidden` | ❌ `403 Forbidden` | ❌ `403 Forbidden` | ✅ `200 OK` | ❌ `401 Unauthorized` |
+## 10. Phase 6.5 Innovation Modules
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| `POST` | `/voice/transcribe-and-query` | Authenticated | Speech-to-text transcript processing & TTS audio generation |
+| `POST` | `/examinations/generate` | Student | AI Mock Exam Simulator configuration & generation |
+| `POST` | `/examinations/attempts/{id}/submit` | Student | Timed exam auto-grading & topic mastery breakdown |
+| `POST` | `/ocr/upload` | Student | OCR notes scanner ingestion |
+| `PATCH`| `/ocr/documents/{id}/correct` | Student | Student verification & formula correction |
+| `POST` | `/ocr/documents/{id}/ask` | Student | Grounded doubt solver strictly citing scanned notes |
+| `POST` | `/scheduling/generate` | Student | Break-aware Pomodoro study timetable generation |
+| `POST` | `/scheduling/reschedule-missed`| Student | Dynamic reallocation of missed study blocks |
+| `GET` | `/gamification/profile` | Student | Verified XP balance, level progression, and badges |
+| `GET` | `/gamification/leaderboard` | Authenticated | Privacy-preserving opt-in campus leaderboard |
+| `GET` | `/knowledge-map` | Student | Interactive curriculum node-link dependency graph |
+| `GET` | `/knowledge-map/node/{id}/details`| Student | Prerequisite & unlocked topic exploration |
+| `GET` | `/interventions/alerts` | Teacher / Admin | Verifiable early-warning alerts |
+| `POST` | `/interventions/actions/create` | Teacher | Schedule academic remedial intervention |
+| `GET` | `/interventions/student/{id}/summary`| Teacher / Parent| Multilingual parent supportive guidance (EN/TE/HI) |

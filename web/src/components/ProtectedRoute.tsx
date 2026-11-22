@@ -55,7 +55,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
                 onClick={() => quickSwitchRole(allowedRoles[0])}
                 className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition-colors shadow-sm"
               >
-                <span>Switch to Demo {allowedRoles[0].toUpperCase()}</span>
+                <span>Switch to {allowedRoles[0].toUpperCase()} Portal</span>
                 <ArrowRight size={16} />
               </button>
             )}
