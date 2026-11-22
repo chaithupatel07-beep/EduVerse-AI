@@ -610,7 +610,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ currentView,
             <span>Academic Portal • {user?.institution_name || 'Oakridge Global Academy'}</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Welcome back, {user?.full_name}!
+            Welcome back, {user?.full_name || 'Student'}!
           </h1>
           <p className="mt-2 text-blue-100 text-sm">
             {user?.grade_level || 'Undergraduate Cohort'} • Student ID STU-2026-0042

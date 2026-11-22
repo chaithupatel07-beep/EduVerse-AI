@@ -114,9 +114,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, isOpe
           <div className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-100">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Institution</p>
             <p className="text-xs font-semibold text-slate-800 truncate">
-              {user.institution_name || 'Oakridge Global Academy'}
+              {user?.institution_name || 'Oakridge Global Academy'}
             </p>
-            <p className="text-[10px] text-slate-500">ID: {user.institution_id ? user.institution_id.slice(0, 8) : 'OGA-2026'}</p>
+            <p className="text-[10px] text-slate-500">ID: {String(user?.institution_id || 'OGA-2026').slice(0, 8)}</p>
           </div>
 
           {/* Navigation Links */}

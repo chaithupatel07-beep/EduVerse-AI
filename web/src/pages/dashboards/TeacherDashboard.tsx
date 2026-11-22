@@ -242,7 +242,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ currentView,
         },
       ];
 
-      setAssignedClasses(finalClasses as any);
+      setAssignedClasses(finalClasses);
       setCourses((Array.isArray(coursesData) && coursesData.length > 0 ? coursesData : [
         {
           id: 'crs-001',
@@ -734,11 +734,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ currentView,
               setActiveTab(tab.id as any);
               if (onNavigate) onNavigate(tab.navId);
             }}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shadow-2xs ${
-              activeTab === tab.id
-                ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
-                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-            }`}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shadow-2xs ${activeTab === tab.id
+              ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
+              : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
           >
             {tab.label}
           </button>
@@ -755,8 +754,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ currentView,
                 key={cl.class_id}
                 onClick={() => handleClassSelectionChange(cl.class_id)}
                 className={`p-4 rounded-xl border cursor-pointer transition ${selectedClassId === cl.class_id
-                    ? 'border-blue-500 bg-blue-50/50 shadow-sm'
-                    : 'border-slate-200 bg-white hover:bg-slate-50'
+                  ? 'border-blue-500 bg-blue-50/50 shadow-sm'
+                  : 'border-slate-200 bg-white hover:bg-slate-50'
                   }`}
               >
                 <div className="flex items-center justify-between">
@@ -943,13 +942,13 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ currentView,
                       <tr key={st.student_id} className="hover:bg-rose-50/30 transition">
                         <td className="py-2.5 px-3 font-bold text-slate-900">{st.student_name}</td>
                         <td className="py-2.5 px-3">
-                          <span className={`font-bold ${(st.quiz_average ?? 65) < 65 ? 'text-rose-600' : 'text-slate-800'}`}>
-                            {st.quiz_average != null ? Number(st.quiz_average).toFixed(1) : '65.0'}%
+                          <span className={`font-bold ${st.quiz_average < 65 ? 'text-rose-600' : 'text-slate-800'}`}>
+                            {st.quiz_average.toFixed(1)}%
                           </span>
                         </td>
                         <td className="py-2.5 px-3">
-                          <span className={`font-bold ${(st.attendance_rate ?? 80) < 80 ? 'text-rose-600' : 'text-slate-800'}`}>
-                            {st.attendance_rate != null ? Number(st.attendance_rate).toFixed(1) : '80.0'}%
+                          <span className={`font-bold ${st.attendance_rate < 80 ? 'text-rose-600' : 'text-slate-800'}`}>
+                            {st.attendance_rate.toFixed(1)}%
                           </span>
                         </td>
                         <td className="py-2.5 px-3">
@@ -1050,8 +1049,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ currentView,
                     key={sub.id}
                     onClick={() => setAiCopilotSubTab(sub.id as any)}
                     className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap ${isSubActive
-                        ? 'bg-amber-400 text-slate-950 shadow-md'
-                        : 'bg-white/10 hover:bg-white/20 text-indigo-100'
+                      ? 'bg-amber-400 text-slate-950 shadow-md'
+                      : 'bg-white/10 hover:bg-white/20 text-indigo-100'
                       }`}
                   >
                     <SubIcon size={14} />
@@ -1731,8 +1730,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ currentView,
                     key={t.id}
                     onClick={() => setSelectedParentThread(t)}
                     className={`p-3 rounded-xl border cursor-pointer transition text-xs space-y-1 ${selectedParentThread?.id === t.id
-                        ? 'border-indigo-600 bg-indigo-50/70 shadow-sm'
-                        : 'border-slate-200 bg-white hover:bg-slate-50'
+                      ? 'border-indigo-600 bg-indigo-50/70 shadow-sm'
+                      : 'border-slate-200 bg-white hover:bg-slate-50'
                       }`}
                   >
                     <div className="flex items-center justify-between">
@@ -1910,10 +1909,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ currentView,
                       </td>
                       <td className="py-2.5 px-3">
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${m.status === 'confirmed'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : m.status === 'completed'
-                              ? 'bg-blue-100 text-blue-800'
-                              : 'bg-amber-100 text-amber-800'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : m.status === 'completed'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-amber-100 text-amber-800'
                           }`}>
                           {m.status}
                         </span>
@@ -2167,12 +2166,12 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ currentView,
                                 setAttendanceRecords((prev) => ({ ...prev, [st.student_id]: mode }))
                               }
                               className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition ${status === mode
-                                  ? mode === 'present'
-                                    ? 'bg-emerald-600 text-white'
-                                    : mode === 'late'
-                                      ? 'bg-amber-500 text-white'
-                                      : 'bg-red-600 text-white'
-                                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                ? mode === 'present'
+                                  ? 'bg-emerald-600 text-white'
+                                  : mode === 'late'
+                                    ? 'bg-amber-500 text-white'
+                                    : 'bg-red-600 text-white'
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                                 }`}
                             >
                               {mode}
