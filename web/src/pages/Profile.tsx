@@ -80,7 +80,7 @@ export const Profile: React.FC = () => {
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
         <div className="flex items-center gap-5">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-500 text-white flex items-center justify-center font-extrabold text-2xl shadow-md shadow-blue-500/20">
-            {user.full_name.charAt(0)}
+            {user?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
           </div>
           <div>
             <div className="flex items-center gap-2.5">

@@ -38,10 +38,16 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate, onToggl
   const loadNotifications = async () => {
     try {
       const items = await educationService.listNotifications();
-      setNotifications(items);
-      setUnreadCount(items.filter((n) => !n.is_read).length);
+      if (Array.isArray(items)) {
+        setNotifications(items);
+        setUnreadCount(items.filter((n) => !n.is_read).length);
+      } else {
+        setNotifications([]);
+        setUnreadCount(0);
+      }
     } catch {
-      // Gracefully silent on initial poll
+      setNotifications([]);
+      setUnreadCount(0);
     }
   };
 
@@ -201,13 +207,13 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate, onToggl
                     className="flex items-center gap-2.5 p-1.5 rounded-full hover:bg-slate-100 transition-colors focus:outline-none"
                   >
                     <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs ring-2 ring-white">
-                      {user.full_name.charAt(0)}
+                      {user?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
                     </div>
                     <div className="hidden md:block text-left text-xs">
                       <p className="font-semibold text-slate-800 leading-tight truncate max-w-[120px]">
-                        {user.full_name}
+                        {user?.full_name || user?.email || 'User'}
                       </p>
-                      <p className="text-[10px] text-slate-500 capitalize">{user.role}</p>
+                      <p className="text-[10px] text-slate-500 capitalize">{user?.role || 'Guest'}</p>
                     </div>
                     <ChevronDown size={14} className="text-slate-400 hidden md:block" />
                   </button>
