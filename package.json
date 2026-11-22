@@ -26,5 +26,8 @@
     "monorepo"
   ],
   "author": "EduVerse AI Team",
-  "license": "MIT"
+  "license": "MIT",
+  "engines": {
+    "node": "26.x"
+  }
 }
